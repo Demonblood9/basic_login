@@ -55,7 +55,6 @@ bool ExtractJsonBool(const std::wstring& json, const std::wstring& key) {
     if (colonPos == std::wstring::npos) return false;
 
     size_t truePos = json.find(L"true", colonPos);
-    size_t falsePos = json.find(L"false", colonPos);
 
     if (truePos != std::wstring::npos && truePos < colonPos + 10) return true;
     return false;
@@ -85,6 +84,14 @@ bool ValidateKey(const std::wstring& key, std::wstring& username, std::wstring& 
     HINTERNET hConnect = NULL;
     HINTERNET hRequest = NULL;
     bool success = false;
+
+    // Declare variables before any goto statements to avoid MSVC errors
+    std::wstring headers;
+    std::string responseBody;
+    DWORD statusCode = 0;
+    DWORD statusCodeSize = sizeof(statusCode);
+    DWORD dwSize = 0;
+    DWORD dwDownloaded = 0;
 
     // Create JSON request body
     std::wstring jsonKey = key;
@@ -126,10 +133,10 @@ bool ValidateKey(const std::wstring& key, std::wstring& username, std::wstring& 
     }
 
     // Set headers
-    std::wstring headers = L"Content-Type: application/json\r\n";
+    headers = L"Content-Type: application/json\r\n";
     WinHttpAddRequestHeaders(hRequest,
                             headers.c_str(),
-                            headers.length(),
+                            (DWORD)headers.length(),
                             WINHTTP_ADDREQ_FLAG_ADD);
 
     // Send request
@@ -137,8 +144,8 @@ bool ValidateKey(const std::wstring& key, std::wstring& username, std::wstring& 
                            WINHTTP_NO_ADDITIONAL_HEADERS,
                            0,
                            (LPVOID)jsonBodyUtf8.c_str(),
-                           jsonBodyUtf8.length(),
-                           jsonBodyUtf8.length(),
+                           (DWORD)jsonBodyUtf8.length(),
+                           (DWORD)jsonBodyUtf8.length(),
                            0)) {
         message = L"Failed to send request";
         goto cleanup;
@@ -151,8 +158,6 @@ bool ValidateKey(const std::wstring& key, std::wstring& username, std::wstring& 
     }
 
     // Get status code
-    DWORD statusCode = 0;
-    DWORD statusCodeSize = sizeof(statusCode);
     WinHttpQueryHeaders(hRequest,
                        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
                        NULL,
@@ -161,10 +166,6 @@ bool ValidateKey(const std::wstring& key, std::wstring& username, std::wstring& 
                        NULL);
 
     // Read response body
-    DWORD dwSize = 0;
-    DWORD dwDownloaded = 0;
-    std::string responseBody;
-
     do {
         dwSize = 0;
         if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
