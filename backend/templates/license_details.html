@@ -107,7 +107,7 @@
                     <div class="p-3 bg-light rounded">
                         {% if license.expires_at %}
                             <i class="bi bi-calendar-x me-2"></i>{{ license.expires_at|format_datetime }}
-                            <br><small class="text-muted">{{ license.days_remaining() }} days remaining</small>
+                            <br><small class="text-muted">{{ license.time_remaining() }}</small>
                         {% else %}
                             <i class="bi bi-infinity me-2"></i><strong class="text-primary">Permanent</strong>
                         {% endif %}
@@ -352,7 +352,7 @@
                     <div class="alert alert-info">
                         <i class="bi bi-calendar-x me-2"></i>
                         <strong>Current Expiration:</strong> {{ license.expires_at|format_datetime }}<br>
-                        <small class="text-muted">{{ license.days_remaining() }} days remaining</small>
+                        <small class="text-muted">{{ license.time_remaining() }}</small>
                     </div>
                     {% endif %}
                     <div class="mb-3">

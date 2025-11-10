@@ -80,7 +80,7 @@
                                 <td>
                                     {% if license.expires_at %}
                                         {{ license.expires_at|format_datetime }}
-                                        <br><small class="text-muted">{{ license.days_remaining() }} days</small>
+                                        <br><small class="text-muted">{{ license.time_remaining() }}</small>
                                     {% else %}
                                         <span class="badge bg-primary">Permanent</span>
                                     {% endif %}

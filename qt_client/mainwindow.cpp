@@ -31,6 +31,169 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // Apply modern dark theme
+    QString styleSheet = R"(
+        /* Main Window */
+        QMainWindow {
+            background-color: #1e1e2e;
+        }
+
+        /* Labels */
+        QLabel {
+            color: #cdd6f4;
+            font-size: 11pt;
+        }
+
+        /* Line Edits */
+        QLineEdit {
+            background-color: #313244;
+            color: #cdd6f4;
+            border: 2px solid #45475a;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11pt;
+            selection-background-color: #89b4fa;
+        }
+
+        QLineEdit:focus {
+            border: 2px solid #89b4fa;
+            background-color: #313244;
+        }
+
+        QLineEdit:hover {
+            border: 2px solid #585b70;
+        }
+
+        /* Buttons */
+        QPushButton {
+            background-color: #89b4fa;
+            color: #1e1e2e;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 11pt;
+            font-weight: bold;
+            min-width: 100px;
+        }
+
+        QPushButton:hover {
+            background-color: #74c7ec;
+        }
+
+        QPushButton:pressed {
+            background-color: #585b70;
+        }
+
+        QPushButton:disabled {
+            background-color: #45475a;
+            color: #6c7086;
+        }
+
+        /* Secondary Button */
+        QPushButton#clearButton {
+            background-color: #45475a;
+            color: #cdd6f4;
+        }
+
+        QPushButton#clearButton:hover {
+            background-color: #585b70;
+        }
+
+        QPushButton#clearButton:pressed {
+            background-color: #313244;
+        }
+
+        /* Checkboxes */
+        QCheckBox {
+            color: #cdd6f4;
+            font-size: 10pt;
+            spacing: 8px;
+        }
+
+        QCheckBox::indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid #45475a;
+            background-color: #313244;
+        }
+
+        QCheckBox::indicator:hover {
+            border: 2px solid #585b70;
+        }
+
+        QCheckBox::indicator:checked {
+            background-color: #89b4fa;
+            border: 2px solid #89b4fa;
+            image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjMzMzMgNEw2IDExLjMzMzNMMi42NjY2NyA4IiBzdHJva2U9IiMxZTFlMmUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==);
+        }
+
+        /* Group Box */
+        QGroupBox {
+            color: #cdd6f4;
+            border: 2px solid #45475a;
+            border-radius: 10px;
+            margin-top: 12px;
+            padding-top: 20px;
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 8px;
+            color: #89b4fa;
+        }
+
+        /* Status Labels */
+        QLabel#statusLabel {
+            font-size: 14pt;
+            font-weight: bold;
+            padding: 8px;
+        }
+
+        QLabel#detailsLabel {
+            font-size: 10pt;
+            padding: 8px;
+            background-color: #313244;
+            border-radius: 8px;
+            border: 1px solid #45475a;
+        }
+
+        /* Scrollbars */
+        QScrollBar:vertical {
+            background-color: #1e1e2e;
+            width: 12px;
+            border-radius: 6px;
+        }
+
+        QScrollBar::handle:vertical {
+            background-color: #45475a;
+            border-radius: 6px;
+            min-height: 20px;
+        }
+
+        QScrollBar::handle:vertical:hover {
+            background-color: #585b70;
+        }
+
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+
+        /* Tooltips */
+        QToolTip {
+            background-color: #313244;
+            color: #cdd6f4;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            padding: 4px;
+        }
+    )";
+
+    this->setStyleSheet(styleSheet);
+
     // Initialize settings (encrypted storage)
     settings = new QSettings("SecureAuth", "LicenseClient");
 
@@ -199,10 +362,10 @@ void MainWindow::handleNetworkReply(QNetworkReply *reply)
     if (success) {
         QString username = json["username"].toString();
         QString expires = json["expires_at"].toString();
-        int daysRemaining = json["days_remaining"].toInt();
+        QString timeRemaining = json["time_remaining"].toString();
         bool isPermanent = json["is_permanent"].toBool();
 
-        showSuccess(username, expires, daysRemaining, isPermanent);
+        showSuccess(username, expires, timeRemaining, isPermanent);
 
         // Save key if remember is checked
         if (ui->rememberCheckBox->isChecked()) {
@@ -223,7 +386,7 @@ void MainWindow::handleNetworkReply(QNetworkReply *reply)
     reply->deleteLater();
 }
 
-void MainWindow::showSuccess(const QString &username, const QString &expires, int daysRemaining, bool isPermanent)
+void MainWindow::showSuccess(const QString &username, const QString &expires, const QString &timeRemaining, bool isPermanent)
 {
     ui->statusLabel->setText("✓ Authentication Successful!");
     ui->statusLabel->setStyleSheet("color: #10c010; font-weight: bold;");
@@ -232,10 +395,10 @@ void MainWindow::showSuccess(const QString &username, const QString &expires, in
     if (isPermanent) {
         details = QString("Welcome, %1!\n\nLicense Type: Permanent\nStatus: Active").arg(username);
     } else {
-        details = QString("Welcome, %1!\n\nExpires: %2\nDays Remaining: %3")
+        details = QString("Welcome, %1!\n\nExpires: %2\nTime Remaining: %3")
                       .arg(username)
                       .arg(expires)
-                      .arg(daysRemaining);
+                      .arg(timeRemaining);
     }
 
     ui->detailsLabel->setText(details);

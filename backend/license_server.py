@@ -51,6 +51,29 @@ class LicenseKey(db.Model):
         delta = self.expires_at - datetime.utcnow()
         return max(0, delta.days)
 
+    def time_remaining(self):
+        """Returns time remaining formatted as '2 Days 16 Hours 23 Minutes'"""
+        if self.expires_at is None:
+            return 'Permanent'
+
+        delta = self.expires_at - datetime.utcnow()
+        if delta.total_seconds() <= 0:
+            return 'Expired'
+
+        days = delta.days
+        hours = delta.seconds // 3600
+        minutes = (delta.seconds % 3600) // 60
+
+        parts = []
+        if days > 0:
+            parts.append(f"{days} Day{'s' if days != 1 else ''}")
+        if hours > 0:
+            parts.append(f"{hours} Hour{'s' if hours != 1 else ''}")
+        if minutes > 0 or not parts:  # Show minutes if it's the only value
+            parts.append(f"{minutes} Minute{'s' if minutes != 1 else ''}")
+
+        return ' '.join(parts)
+
     def __repr__(self):
         return f'<LicenseKey {self.username}>'
 
@@ -554,7 +577,7 @@ def validate_license():
         'message': 'Authentication successful',
         'username': license_key.username,
         'expires_at': expires_formatted,
-        'days_remaining': license_key.days_remaining(),
+        'time_remaining': license_key.time_remaining(),
         'is_permanent': license_key.expires_at is None
     }), 200
 

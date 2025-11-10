@@ -37,7 +37,7 @@ private:
     void clearKey();
     bool hasSavedKey();
     void attemptLogin(const QString &key);
-    void showSuccess(const QString &username, const QString &expires, int daysRemaining, bool isPermanent);
+    void showSuccess(const QString &username, const QString &expires, const QString &timeRemaining, bool isPermanent);
     void showError(const QString &message);
     void autoLogin();
 
