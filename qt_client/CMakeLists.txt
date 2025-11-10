@@ -55,10 +55,10 @@ if(WIN32)
 
     # Add manifest file for admin privileges
     if(MSVC)
-        target_sources(SecureLicenseClient PRIVATE app.manifest)
-        set_target_properties(SecureLicenseClient PROPERTIES
-            LINK_FLAGS "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app.manifest"
-        )
+        # Create a resource file to embed the manifest
+        set(RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/app.rc")
+        file(WRITE ${RC_FILE} "1 RT_MANIFEST \"${CMAKE_CURRENT_SOURCE_DIR}/app.manifest\"\n")
+        target_sources(SecureLicenseClient PRIVATE ${RC_FILE})
     endif()
 endif()
 
