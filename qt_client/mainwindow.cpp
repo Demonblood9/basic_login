@@ -70,7 +70,7 @@ QString MainWindow::getHWID()
     components << QSysInfo::machineUniqueId();
 
     // 2. MAC Address of first network interface
-    foreach (const QNetworkInterface &interface, QNetworkInterface::allInterfaces()) {
+    for (const QNetworkInterface &interface : QNetworkInterface::allInterfaces()) {
         if (!(interface.flags() & QNetworkInterface::IsLoopBack)) {
             components << interface.hardwareAddress();
             break; // Use first non-loopback interface
@@ -334,8 +334,8 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
         return;
     }
 
-    // Show update dialog
-    QString message = QString("A new version is available!\n\n"
+    // Show mandatory update dialog
+    QString message = QString("A mandatory update is required!\n\n"
                              "Current version: %1\n"
                              "New version: %2\n"
                              "Size: %3 MB\n\n")
@@ -347,14 +347,13 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
         message += "Release Notes:\n" + releaseNotes + "\n\n";
     }
 
-    message += "Would you like to download and install the update?";
+    message += "The application will now download and install the update.\n"
+               "This is required to continue using the application.";
 
-    int ret = QMessageBox::question(this, "Update Available", message,
-                                     QMessageBox::Yes | QMessageBox::No);
+    QMessageBox::information(this, "Mandatory Update", message);
 
-    if (ret == QMessageBox::Yes) {
-        downloadUpdate(downloadUrl, serverVersion);
-    }
+    // Force download - no choice
+    downloadUpdate(downloadUrl, serverVersion);
 }
 
 void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &version)
@@ -365,11 +364,13 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
     QNetworkReply *reply = networkManager->get(request);
     downloadReply = reply;
 
-    // Create progress dialog
-    QProgressDialog *progress = new QProgressDialog("Downloading update...", "Cancel", 0, 100, this);
-    progress->setWindowModality(Qt::WindowModal);
+    // Create progress dialog (no cancel button - mandatory update)
+    QProgressDialog *progress = new QProgressDialog("Downloading mandatory update...", QString(), 0, 100, this);
+    progress->setWindowModality(Qt::ApplicationModal);
     progress->setMinimumDuration(0);
     progress->setValue(0);
+    progress->setCancelButton(nullptr);  // Remove cancel button
+    progress->setWindowFlags(progress->windowFlags() & ~Qt::WindowCloseButtonHint);  // Disable close button
 
     // Connect download progress
     connect(reply, &QNetworkReply::downloadProgress, this, [progress](qint64 bytesReceived, qint64 bytesTotal) {
@@ -377,11 +378,6 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
             int percent = (int)((bytesReceived * 100) / bytesTotal);
             progress->setValue(percent);
         }
-    });
-
-    // Connect cancel button
-    connect(progress, &QProgressDialog::canceled, this, [reply]() {
-        reply->abort();
     });
 
     // Handle download completion
@@ -392,8 +388,11 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
         downloadReply = nullptr;
 
         if (reply->error() != QNetworkReply::NoError) {
-            QMessageBox::warning(this, "Download Failed",
-                               "Failed to download update:\n" + reply->errorString());
+            QMessageBox::critical(this, "Mandatory Update Failed",
+                                 "Failed to download mandatory update:\n" + reply->errorString() +
+                                 "\n\nThe application cannot continue without this update.\n"
+                                 "The application will now close.");
+            QApplication::quit();
             return;
         }
 
@@ -403,7 +402,11 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
 
         QFile file(updateFilePath);
         if (!file.open(QIODevice::WriteOnly)) {
-            QMessageBox::critical(this, "Error", "Failed to save update file:\n" + file.errorString());
+            QMessageBox::critical(this, "Mandatory Update Failed",
+                                 "Failed to save update file:\n" + file.errorString() +
+                                 "\n\nThe application cannot continue without this update.\n"
+                                 "The application will now close.");
+            QApplication::quit();
             return;
         }
 
@@ -415,14 +418,17 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
             QMessageBox::information(this, "Update Complete",
                                    "Update has been downloaded successfully.\n"
                                    "The application will now restart to apply the update.");
-            
+
             // Restart application
             QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
             QApplication::quit();
         } else {
-            QMessageBox::critical(this, "Update Failed",
-                                "Failed to apply the update.\n"
-                                "Please update manually or contact support.");
+            QMessageBox::critical(this, "Mandatory Update Failed",
+                                "Failed to apply the mandatory update.\n\n"
+                                "The application cannot continue without this update.\n"
+                                "The application will now close.\n\n"
+                                "Please contact support or reinstall the application.");
+            QApplication::quit();
         }
     });
 }

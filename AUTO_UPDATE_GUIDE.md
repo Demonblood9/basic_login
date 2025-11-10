@@ -65,22 +65,32 @@ update_v1.0.1.zip
 
 1. Client checks current version (hardcoded in `mainwindow.cpp`)
 2. Contacts server API: `/api/version/check`
-3. If newer version available, shows update dialog
-4. User can choose to install or skip
+3. If newer version available, shows **mandatory update dialog**
+4. Update is **REQUIRED** - user cannot skip or decline
 
-### Update Process
+### Mandatory Update Process
 
-1. **Download**: Progress dialog shows download percentage
-2. **Extract**: ZIP file extracted to app directory
-3. **Restart**: App closes and relaunches automatically
-4. Files are replaced while app is closed (Windows batch script)
+1. **Information Dialog**: Shows update details (no cancel option)
+2. **Download**: Progress dialog with download percentage (cannot cancel)
+3. **Extract**: ZIP file extracted to app directory (requires admin rights)
+4. **Restart**: App closes and relaunches automatically
+5. Files are replaced while app is closed (Windows batch script)
 
-### Seamless Experience
+### Enforcement
 
-- Update check is silent if no update available
-- Users can cancel download at any time
-- Failed updates don't break the application
-- Users can continue using the app if they decline update
+- ✅ Update check is silent if no update available
+- ✅ Users **CANNOT** cancel or skip updates
+- ✅ Progress dialog has no cancel button
+- ✅ Failed updates force app to close (cannot continue without update)
+- ✅ Download failure = app closes with error message
+- ✅ Extraction failure = app closes with error message
+
+### Admin Privilege Requirement
+
+- ✅ Application requires administrator privileges to run
+- ✅ Windows UAC prompt appears on launch
+- ✅ Admin rights needed for file replacement during updates
+- ✅ Manifest file enforces `requireAdministrator` level
 
 ---
 
@@ -369,3 +379,134 @@ currentVersion("1.0.0")  // Current client version
 ---
 
 🎉 **Your auto-update system is ready to keep clients up-to-date automatically!**
+
+---
+
+## Administrator Privileges
+
+### Why Admin Rights Are Required
+
+The application requires administrator privileges for:
+
+1. **File Replacement During Updates**
+   - Writing to Program Files directory
+   - Replacing executable files
+   - Updating DLL dependencies
+
+2. **System-Level Operations**
+   - HWID detection using system APIs
+   - Registry access for settings storage
+   - Network operations for license validation
+
+### User Experience
+
+**First Launch:**
+- Windows UAC prompt appears: "Do you want to allow this app to make changes to your device?"
+- User must click "Yes" to continue
+- Shield icon appears on the executable
+
+**Every Launch:**
+- UAC prompt will appear each time (mandatory for requireAdministrator)
+- This is by design for security
+- Cannot be bypassed
+
+### Disabling Admin Requirement (Not Recommended)
+
+If you need to remove admin requirement:
+
+1. Edit `qt_client/app.manifest`
+2. Change line:
+   ```xml
+   <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+   ```
+   To:
+   ```xml
+   <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+   ```
+3. Rebuild application
+
+**Warning:** Without admin rights:
+- Updates may fail if app is in Program Files
+- File replacement during updates will fail
+- Some HWID detection methods may not work
+
+---
+
+## Building with Admin Manifest
+
+### CMake Build (Recommended)
+
+The CMakeLists.txt is already configured to include the manifest:
+
+```bash
+cd qt_client/build
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release
+```
+
+The manifest is automatically embedded during build.
+
+### Manual Build with MSVC
+
+If building manually:
+
+```cmd
+cl.exe /EHsc /DUNICODE mainwindow.cpp main.cpp ^
+  /link /MANIFESTINPUT:app.manifest ^
+  Qt6Core.lib Qt6Widgets.lib Qt6Network.lib
+```
+
+### Verify Manifest is Embedded
+
+To check if admin rights are embedded:
+
+1. Right-click `SecureLicenseClient.exe`
+2. Select "Properties"
+3. Go to "Compatibility" tab
+4. Check if "Run this program as an administrator" shows shield icon
+
+Or use `mt.exe` (Manifest Tool):
+```cmd
+mt.exe -inputresource:SecureLicenseClient.exe;#1 -out:extracted.manifest
+type extracted.manifest
+```
+
+Look for: `level="requireAdministrator"`
+
+---
+
+## Update Package Requirements
+
+### What to Include
+
+When creating update ZIP files, include:
+
+**Required Files:**
+- `SecureLicenseClient.exe` (with embedded manifest)
+- Qt6Core.dll
+- Qt6Gui.dll  
+- Qt6Widgets.dll
+- Qt6Network.dll
+
+**Required Folders:**
+- `platforms/qwindows.dll` (Qt platform plugin)
+
+**Optional (if using):**
+- `styles/` folder with Qt style plugins
+- `imageformats/` folder for image support
+- Any custom DLLs or resources
+
+### Creating the Update Package
+
+```cmd
+cd qt_client/build/Release
+
+REM Ensure windeployqt was run
+C:\Qt\6.5.3\msvc2019_64\bin\windeployqt.exe SecureLicenseClient.exe
+
+REM Create ZIP with all files
+powershell Compress-Archive -Path * -DestinationPath update_v1.0.1.zip
+```
+
+**Important:** The executable in the ZIP must have the admin manifest embedded, otherwise updates will fail to apply properly.
+

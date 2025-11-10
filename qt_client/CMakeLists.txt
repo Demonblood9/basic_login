@@ -52,6 +52,14 @@ if(WIN32)
     set_target_properties(SecureLicenseClient PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
+
+    # Add manifest file for admin privileges
+    if(MSVC)
+        target_sources(SecureLicenseClient PRIVATE app.manifest)
+        set_target_properties(SecureLicenseClient PROPERTIES
+            LINK_FLAGS "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app.manifest"
+        )
+    endif()
 endif()
 
 # macOS-specific settings
