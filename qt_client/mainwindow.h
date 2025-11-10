@@ -29,6 +29,7 @@ private:
     Ui::MainWindow *ui;
     QSettings *settings;
     QNetworkAccessManager *networkManager;
+    QNetworkAccessManager *updateNetworkManager;  // Separate manager for update checks
 
     QString getHWID();
     void saveKey(const QString &key);

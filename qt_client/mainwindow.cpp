@@ -34,10 +34,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Initialize settings (encrypted storage)
     settings = new QSettings("SecureAuth", "LicenseClient");
 
-    // Initialize network manager
+    // Initialize network manager for login
     networkManager = new QNetworkAccessManager(this);
     connect(networkManager, &QNetworkAccessManager::finished,
             this, &MainWindow::handleNetworkReply);
+
+    // Initialize separate network manager for updates (to avoid signal conflicts)
+    updateNetworkManager = new QNetworkAccessManager(this);
 
     // Load saved settings
     bool rememberKey = settings->value("rememberKey", false).toBool();
@@ -300,7 +303,7 @@ void MainWindow::checkForUpdates()
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    QNetworkReply *reply = networkManager->get(request);
+    QNetworkReply *reply = updateNetworkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         handleUpdateCheckReply(reply);
     });
@@ -389,7 +392,7 @@ void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &versi
     QUrl url(downloadUrl);
     QNetworkRequest request(url);
 
-    QNetworkReply *reply = networkManager->get(request);
+    QNetworkReply *reply = updateNetworkManager->get(request);
     downloadReply = reply;
 
     // Create progress dialog (no cancel button - mandatory update)
