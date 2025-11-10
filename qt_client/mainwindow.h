@@ -33,7 +33,7 @@ private:
     void saveKey(const QString &key);
     QString loadKey();
     void clearKey();
-    bool hasS savedKey();
+    bool hasSavedKey();
     void attemptLogin(const QString &key);
     void showSuccess(const QString &username, const QString &expires, int daysRemaining, bool isPermanent);
     void showError(const QString &message);
