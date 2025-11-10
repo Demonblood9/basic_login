@@ -1,5 +1,6 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
+from functools import wraps
 from datetime import datetime, timedelta
 import secrets
 import hashlib
@@ -57,6 +58,25 @@ class LoginHistory(db.Model):
     def __repr__(self):
         return f'<LoginHistory {self.ip_address} @ {self.timestamp}>'
 
+class AdminUser(db.Model):
+    """Admin users for accessing the admin panel"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+
+    def set_password(self, password):
+        """Hash and set password"""
+        self.password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    def check_password(self, password):
+        """Verify password"""
+        return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
+
+    def __repr__(self):
+        return f'<AdminUser {self.username}>'
+
 # Helper Functions
 def hash_key(key):
     return hashlib.sha256(key.encode()).hexdigest()
@@ -69,17 +89,66 @@ def get_client_ip():
         return request.headers.get('X-Forwarded-For').split(',')[0]
     return request.remote_addr
 
+# Authentication Decorator
+def login_required(f):
+    """Decorator to require admin login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_logged_in' not in session:
+            flash('Please log in to access the admin panel', 'warning')
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ============================================================================
+# AUTHENTICATION ROUTES
+# ============================================================================
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if 'admin_logged_in' in session:
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        admin = AdminUser.query.filter_by(username=username).first()
+
+        if admin and admin.check_password(password):
+            session['admin_logged_in'] = True
+            session['admin_username'] = username
+            admin.last_login = datetime.utcnow()
+            db.session.commit()
+            flash(f'Welcome back, {username}!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid username or password', 'danger')
+
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Logout admin user"""
+    session.pop('admin_logged_in', None)
+    session.pop('admin_username', None)
+    flash('You have been logged out successfully', 'info')
+    return redirect(url_for('admin_login'))
+
 # ============================================================================
 # WEB ADMIN PANEL ROUTES
 # ============================================================================
 
 @app.route('/')
+@login_required
 def index():
     """Redirect to admin dashboard"""
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin')
 @app.route('/admin/dashboard')
+@login_required
 def admin_dashboard():
     """Admin dashboard with statistics"""
     total_licenses = LicenseKey.query.count()
@@ -108,12 +177,14 @@ def admin_dashboard():
                          recent_licenses=recent_licenses)
 
 @app.route('/admin/licenses')
+@login_required
 def admin_licenses():
     """List all licenses"""
     licenses = LicenseKey.query.order_by(LicenseKey.created_at.desc()).all()
     return render_template('licenses.html', licenses=licenses)
 
 @app.route('/admin/licenses/create', methods=['GET', 'POST'])
+@login_required
 def admin_create_license():
     """Create new license"""
     if request.method == 'POST':
@@ -161,6 +232,7 @@ def admin_create_license():
     return render_template('create_license.html')
 
 @app.route('/admin/licenses/<int:license_id>')
+@login_required
 def admin_license_details(license_id):
     """View license details and history"""
     license_key = LicenseKey.query.get_or_404(license_id)
@@ -172,6 +244,7 @@ def admin_license_details(license_id):
     return render_template('license_details.html', license=license_key, login_history=history)
 
 @app.route('/admin/licenses/<int:license_id>/suspend', methods=['POST'])
+@login_required
 def admin_suspend_license(license_id):
     """Suspend a license"""
     license_key = LicenseKey.query.get_or_404(license_id)
@@ -185,6 +258,7 @@ def admin_suspend_license(license_id):
     return redirect(url_for('admin_license_details', license_id=license_id))
 
 @app.route('/admin/licenses/<int:license_id>/unsuspend', methods=['POST'])
+@login_required
 def admin_unsuspend_license(license_id):
     """Unsuspend a license"""
     license_key = LicenseKey.query.get_or_404(license_id)
@@ -197,6 +271,7 @@ def admin_unsuspend_license(license_id):
     return redirect(url_for('admin_license_details', license_id=license_id))
 
 @app.route('/admin/licenses/<int:license_id>/reset-hwid', methods=['POST'])
+@login_required
 def admin_reset_hwid(license_id):
     """Reset HWID binding"""
     license_key = LicenseKey.query.get_or_404(license_id)
@@ -211,6 +286,7 @@ def admin_reset_hwid(license_id):
     return redirect(url_for('admin_license_details', license_id=license_id))
 
 @app.route('/admin/licenses/<int:license_id>/extend', methods=['POST'])
+@login_required
 def admin_extend_license(license_id):
     """Extend license expiration"""
     license_key = LicenseKey.query.get_or_404(license_id)
@@ -230,6 +306,7 @@ def admin_extend_license(license_id):
     return redirect(url_for('admin_license_details', license_id=license_id))
 
 @app.route('/admin/licenses/<int:license_id>/delete', methods=['POST'])
+@login_required
 def admin_delete_license(license_id):
     """Delete a license"""
     license_key = LicenseKey.query.get_or_404(license_id)

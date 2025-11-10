@@ -1,8 +1,26 @@
 # Web Admin Panel - Quick Start Guide
 
-## 🚀 Getting Started in 3 Steps
+## 🚀 Getting Started in 4 Steps
 
-### 1. Start the Server
+### 1. Create Your Admin Account (First Time Only)
+
+**On Windows:**
+```cmd
+cd backend
+create_admin.bat
+```
+
+**On Linux/Mac:**
+```bash
+cd backend
+python create_admin.py
+```
+
+Follow the prompts to create your admin username and password.
+
+**Important:** Remember your credentials - you'll need them to log in!
+
+### 2. Start the Server
 ```bash
 cd backend
 python license_server.py
@@ -14,13 +32,16 @@ cd backend
 ./start_server.sh
 ```
 
-### 2. Open the Admin Panel
+### 3. Log In to the Admin Panel
+
 Open your web browser and navigate to:
 ```
-http://localhost:5000/admin/dashboard
+http://localhost:5000/admin/login
 ```
 
-### 3. Start Managing Licenses!
+Enter the username and password you created in Step 1.
+
+### 4. Start Managing Licenses!
 - Click "Create New License" to generate license keys
 - View all licenses in the "All Licenses" page
 - Click on any license to see detailed information and login history
@@ -65,6 +86,48 @@ Detailed view with:
   - **Extend License** - Add more days
   - **Delete License** - Permanent removal
 - Complete login history with timestamps, IPs, and HWIDs
+
+---
+
+## 🔐 Security & Authentication
+
+### Admin Login System
+The admin panel is now protected with secure authentication:
+
+✅ **Session-based authentication** - Secure login required for all admin pages
+✅ **Password hashing** - Passwords stored with SHA-256 hashing
+✅ **Auto-redirect** - Unauthorized users redirected to login page
+✅ **Flash messages** - Clear feedback for login attempts
+✅ **User display** - Shows logged-in username in sidebar
+✅ **Logout functionality** - Secure session termination
+
+### Managing Admin Users
+
+**Create Additional Admins:**
+```bash
+cd backend
+python create_admin.py
+```
+
+**Protected Routes:**
+All admin panel routes require authentication:
+- `/admin/dashboard`
+- `/admin/licenses`
+- `/admin/licenses/create`
+- `/admin/licenses/<id>` (details, suspend, delete, etc.)
+
+**Public Routes:**
+- `/admin/login` - Login page
+- `/api/validate` - Client license validation (no auth required)
+- `/health` - Server health check
+
+### Best Practices
+
+1. **Use Strong Passwords** - Minimum 6 characters (longer recommended)
+2. **Don't Share Credentials** - Each admin should have their own account
+3. **Log Out When Done** - Click logout button in sidebar
+4. **Monitor Login Activity** - Check license login history regularly
+5. **Use HTTPS in Production** - Never use HTTP for production deployments
 
 ---
 
