@@ -15,14 +15,24 @@
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "Msimg32.lib")
 
-using namespace Gdiplus;
-
 // Control IDs
 #define IDC_KEY_EDIT        1001
 #define IDC_LOGIN_BUTTON    1002
 #define IDC_STATUS_LABEL    1003
 #define IDC_RESULT_LABEL    1004
 #define IDC_CLEAR_BUTTON    1005
+
+// Modern color scheme (Windows 11 inspired)
+#define COLOR_BACKGROUND RGB(243, 243, 243)
+#define COLOR_PANEL RGB(255, 255, 255)
+#define COLOR_ACCENT RGB(0, 120, 212)
+#define COLOR_ACCENT_HOVER RGB(0, 103, 192)
+#define COLOR_SUCCESS RGB(16, 124, 16)
+#define COLOR_ERROR RGB(196, 43, 28)
+#define COLOR_WARNING RGB(244, 147, 0)
+#define COLOR_TEXT_PRIMARY RGB(32, 32, 32)
+#define COLOR_TEXT_SECONDARY RGB(96, 96, 96)
+#define COLOR_BORDER RGB(229, 229, 229)
 
 // Global variables
 HWND hKeyEdit;
@@ -39,29 +49,17 @@ bool isButtonHovered = false;
 bool isClearButtonHovered = false;
 ULONG_PTR gdiplusToken;
 
-// Modern color scheme (Windows 11 inspired)
-const COLORREF COLOR_BACKGROUND = RGB(243, 243, 243);
-const COLORREF COLOR_PANEL = RGB(255, 255, 255);
-const COLORREF COLOR_ACCENT = RGB(0, 120, 212);      // Windows blue
-const COLORREF COLOR_ACCENT_HOVER = RGB(0, 103, 192);
-const COLORREF COLOR_SUCCESS = RGB(16, 124, 16);
-const COLORREF COLOR_ERROR = RGB(196, 43, 28);
-const COLORREF COLOR_WARNING = RGB(244, 147, 0);
-const COLORREF COLOR_TEXT_PRIMARY = RGB(32, 32, 32);
-const COLORREF COLOR_TEXT_SECONDARY = RGB(96, 96, 96);
-const COLORREF COLOR_BORDER = RGB(229, 229, 229);
-
 // Server configuration
 const wchar_t* SERVER_HOST = L"localhost";
 const int SERVER_PORT = 5000;
 const wchar_t* VALIDATE_PATH = L"/api/validate";
 
 // Helper function to create rounded rectangle path
-void CreateRoundRectPath(GraphicsPath* path, Rect rect, int radius) {
-    path->AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-    path->AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-    path->AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0, 90);
-    path->AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90, 90);
+void CreateRoundRectPath(Gdiplus::GraphicsPath* path, Gdiplus::Rect rect, int radius) {
+    path->AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180.0f, 90.0f);
+    path->AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270.0f, 90.0f);
+    path->AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0.0f, 90.0f);
+    path->AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90.0f, 90.0f);
     path->CloseFigure();
 }
 
@@ -239,9 +237,9 @@ cleanup:
 
 // Custom button drawing procedure
 void DrawModernButton(HDC hdc, RECT rect, const wchar_t* text, bool isHovered, bool isPressed, COLORREF baseColor) {
-    Graphics graphics(hdc);
-    graphics.SetSmoothingMode(SmoothingModeAntiAlias);
-    graphics.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
+    Gdiplus::Graphics graphics(hdc);
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
     // Calculate color based on state
     int r = GetRValue(baseColor);
@@ -258,29 +256,29 @@ void DrawModernButton(HDC hdc, RECT rect, const wchar_t* text, bool isHovered, b
         b = max(0, b - 15);
     }
 
-    Color buttonColor(255, r, g, b);
-    SolidBrush brush(buttonColor);
+    Gdiplus::Color buttonColor(255, (BYTE)r, (BYTE)g, (BYTE)b);
+    Gdiplus::SolidBrush brush(buttonColor);
 
     // Draw rounded rectangle button
-    GraphicsPath path;
-    Rect buttonRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+    Gdiplus::GraphicsPath path;
+    Gdiplus::Rect buttonRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
     CreateRoundRectPath(&path, buttonRect, 6);
 
     graphics.FillPath(&brush, &path);
 
     // Draw subtle shadow/border
-    Pen borderPen(Color(40, 0, 0, 0), 1);
+    Gdiplus::Pen borderPen(Gdiplus::Color(40, 0, 0, 0), 1);
     graphics.DrawPath(&borderPen, &path);
 
     // Draw text
-    FontFamily fontFamily(L"Segoe UI");
-    Gdiplus::Font font(&fontFamily, 14, FontStyleBold, UnitPixel);
-    StringFormat stringFormat;
-    stringFormat.SetAlignment(StringAlignmentCenter);
-    stringFormat.SetLineAlignment(StringAlignmentCenter);
+    Gdiplus::FontFamily fontFamily(L"Segoe UI");
+    Gdiplus::Font font(&fontFamily, 14, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    Gdiplus::StringFormat stringFormat;
+    stringFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
+    stringFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
 
-    RectF layoutRect((REAL)rect.left, (REAL)rect.top, (REAL)(rect.right - rect.left), (REAL)(rect.bottom - rect.top));
-    SolidBrush textBrush(Color(255, 255, 255, 255));
+    Gdiplus::RectF layoutRect((Gdiplus::REAL)rect.left, (Gdiplus::REAL)rect.top, (Gdiplus::REAL)(rect.right - rect.left), (Gdiplus::REAL)(rect.bottom - rect.top));
+    Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 255, 255, 255));
     graphics.DrawString(text, -1, &font, layoutRect, &stringFormat, &textBrush);
 }
 
@@ -343,45 +341,45 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-            Graphics graphics(hdc);
-            graphics.SetSmoothingMode(SmoothingModeAntiAlias);
+            Gdiplus::Graphics graphics(hdc);
+            graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 
             // Get client rect
             RECT clientRect;
             GetClientRect(hwnd, &clientRect);
 
             // Draw background gradient
-            LinearGradientBrush bgBrush(
-                Point(0, 0),
-                Point(0, clientRect.bottom),
-                Color(255, 243, 243, 243),
-                Color(255, 250, 250, 250)
+            Gdiplus::LinearGradientBrush bgBrush(
+                Gdiplus::Point(0, 0),
+                Gdiplus::Point(0, clientRect.bottom),
+                Gdiplus::Color(255, 243, 243, 243),
+                Gdiplus::Color(255, 250, 250, 250)
             );
             graphics.FillRectangle(&bgBrush, 0, 0, clientRect.right, clientRect.bottom);
 
             // Draw main card panel with shadow
-            Rect cardRect(40, 125, 520, 330);
+            Gdiplus::Rect cardRect(40, 125, 520, 330);
 
             // Shadow
-            GraphicsPath shadowPath;
-            Rect shadowRect(cardRect.X + 3, cardRect.Y + 3, cardRect.Width, cardRect.Height);
+            Gdiplus::GraphicsPath shadowPath;
+            Gdiplus::Rect shadowRect(cardRect.X + 3, cardRect.Y + 3, cardRect.Width, cardRect.Height);
             CreateRoundRectPath(&shadowPath, shadowRect, 12);
-            PathGradientBrush shadowBrush(&shadowPath);
-            Color centerColor(80, 0, 0, 0);
-            Color edgeColor(0, 0, 0, 0);
+            Gdiplus::PathGradientBrush shadowBrush(&shadowPath);
+            Gdiplus::Color centerColor(80, 0, 0, 0);
+            Gdiplus::Color edgeColor(0, 0, 0, 0);
             shadowBrush.SetCenterColor(centerColor);
             int count = 1;
             shadowBrush.SetSurroundColors(&edgeColor, &count);
             graphics.FillPath(&shadowBrush, &shadowPath);
 
             // Card
-            GraphicsPath cardPath;
+            Gdiplus::GraphicsPath cardPath;
             CreateRoundRectPath(&cardPath, cardRect, 12);
-            SolidBrush cardBrush(Color(255, 255, 255, 255));
+            Gdiplus::SolidBrush cardBrush(Gdiplus::Color(255, 255, 255, 255));
             graphics.FillPath(&cardBrush, &cardPath);
 
             // Card border
-            Pen cardBorder(Color(255, GetRValue(COLOR_BORDER), GetGValue(COLOR_BORDER), GetBValue(COLOR_BORDER)), 1);
+            Gdiplus::Pen cardBorder(Gdiplus::Color(255, (BYTE)GetRValue(COLOR_BORDER), (BYTE)GetGValue(COLOR_BORDER), (BYTE)GetBValue(COLOR_BORDER)), 1);
             graphics.DrawPath(&cardBorder, &cardPath);
 
             EndPaint(hwnd, &ps);
@@ -569,7 +567,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             DeleteObject(hNormalFont);
             DeleteObject(hLabelFont);
             DeleteObject(hButtonFont);
-            GdiplusShutdown(gdiplusToken);
+            Gdiplus::GdiplusShutdown(gdiplusToken);
             PostQuitMessage(0);
             return 0;
         }
@@ -581,8 +579,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 // WinMain entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     // Initialize GDI+
-    GdiplusStartupInput gdiplusStartupInput;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
     // Initialize common controls
     INITCOMMONCONTROLSEX icex;
