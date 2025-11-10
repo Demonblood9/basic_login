@@ -322,6 +322,10 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
     }
 
     QByteArray response = reply->readAll();
+
+    // Log raw response for debugging
+    qDebug() << "Raw API Response:" << response;
+
     QJsonDocument doc = QJsonDocument::fromJson(response);
     QJsonObject obj = doc.object();
 
@@ -332,18 +336,20 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
     QString releaseNotes = obj["release_notes"].toString();
     QString downloadUrl = obj["download_url"].toString();
 
-    // Always show debug info
+    // Always show debug info with raw response
     QString debugMessage = QString("VERSION DEBUG INFO\n\n"
                                   "Client Version: %1\n"
                                   "Server Version: %2\n"
                                   "Update Available: %3\n"
                                   "Versions Match: %4\n"
-                                  "Message: %5")
+                                  "Message: %5\n\n"
+                                  "Raw Response:\n%6")
                               .arg(currentVersion)
                               .arg(serverVersion.isEmpty() ? "N/A (not set on server)" : serverVersion)
                               .arg(updateAvailable ? "YES" : "NO")
                               .arg(serverVersion == currentVersion ? "YES" : "NO")
-                              .arg(message.isEmpty() ? "None" : message);
+                              .arg(message.isEmpty() ? "None" : message)
+                              .arg(QString::fromUtf8(response));
 
     QMessageBox::information(this, "Version Check Debug", debugMessage);
 
