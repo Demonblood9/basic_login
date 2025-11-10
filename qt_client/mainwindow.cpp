@@ -71,9 +71,10 @@ QString MainWindow::getHWID()
 
     // 2. MAC Address of first network interface
     QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
-    for (const QNetworkInterface &interface : interfaces) {
-        if (!(interface.flags() & QNetworkInterface::IsLoopBack)) {
-            components << interface.hardwareAddress();
+    QList<QNetworkInterface>::const_iterator it;
+    for (it = interfaces.constBegin(); it != interfaces.constEnd(); ++it) {
+        if (!(it->flags() & QNetworkInterface::IsLoopBack)) {
+            components << it->hardwareAddress();
             break; // Use first non-loopback interface
         }
     }
