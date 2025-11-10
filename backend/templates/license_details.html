@@ -75,6 +75,19 @@
             </div>
 
             <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-bold text-muted small">LICENSE KEY</label>
+                    <div class="p-3 bg-light rounded d-flex align-items-center justify-content-between">
+                        <code class="text-primary" id="licenseKey" style="flex: 1;">••••••••••••••••••••••••••••••••</code>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-3" onclick="toggleLicenseKey()" id="toggleBtn">
+                            <i class="bi bi-eye"></i> Show
+                        </button>
+                    </div>
+                    <input type="hidden" id="actualKey" value="{{ license.license_key }}">
+                </div>
+            </div>
+
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label fw-bold text-muted small">LICENSE KEY HASH</label>
                     <div class="p-3 bg-light rounded">
@@ -414,4 +427,25 @@
         </div>
     </div>
 </div>
+
+<script>
+let keyVisible = false;
+
+function toggleLicenseKey() {
+    const keyElement = document.getElementById('licenseKey');
+    const btnElement = document.getElementById('toggleBtn');
+    const actualKey = document.getElementById('actualKey').value;
+
+    if (keyVisible) {
+        keyElement.textContent = '••••••••••••••••••••••••••••••••';
+        btnElement.innerHTML = '<i class="bi bi-eye"></i> Show';
+    } else {
+        keyElement.textContent = actualKey;
+        btnElement.innerHTML = '<i class="bi bi-eye-slash"></i> Hide';
+    }
+
+    keyVisible = !keyVisible;
+}
+</script>
+
 {% endblock %}

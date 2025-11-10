@@ -169,6 +169,20 @@ void ValidateLicense(HWND hwnd) {
 
     EnableWindow(g_hWndButton, TRUE);
 
+    // Debug: Check if we got a response
+    if (response.empty()) {
+        std::wstring debugMsg = L"Connection Error\n\n";
+        debugMsg += L"Could not connect to server at http://localhost:5000\n\n";
+        debugMsg += L"Please check:\n";
+        debugMsg += L"- Flask server is running\n";
+        debugMsg += L"- Server is on http://localhost:5000\n";
+        debugMsg += L"- No firewall is blocking the connection";
+
+        MessageBox(hwnd, debugMsg.c_str(), L"Connection Failed", MB_OK | MB_ICONERROR);
+        SetWindowText(g_hWndStatus, L"[X] Connection Failed");
+        return;
+    }
+
     if (response.find(L"\"success\":true") != std::wstring::npos) {
         // Save key if remember is checked
         if (SendMessage(g_hWndCheck, BM_GETCHECK, 0, 0) == BST_CHECKED) {
@@ -176,7 +190,7 @@ void ValidateLicense(HWND hwnd) {
         }
 
         // Parse response for details
-        std::wstring message = L"✓ Authentication Successful!\n\n";
+        std::wstring message = L"[OK] Authentication Successful!\n\n";
 
         size_t userPos = response.find(L"\"username\":\"");
         if (userPos != std::wstring::npos) {
@@ -200,11 +214,11 @@ void ValidateLicense(HWND hwnd) {
         }
 
         if (response.find(L"\"is_permanent\":true") != std::wstring::npos) {
-            message = L"✓ Authentication Successful!\n\nLicense Type: Permanent\nStatus: Active";
+            message = L"[OK] Authentication Successful!\n\nLicense Type: Permanent\nStatus: Active";
         }
 
         MessageBox(hwnd, message.c_str(), L"Success", MB_OK | MB_ICONINFORMATION);
-        SetWindowText(g_hWndStatus, L"✓ Authentication Successful");
+        SetWindowText(g_hWndStatus, L"[OK] Authentication Successful");
     }
     else if (response.find(L"suspended") != std::wstring::npos) {
         std::wstring message = L"Your license has been suspended.\n\n";
@@ -219,7 +233,7 @@ void ValidateLicense(HWND hwnd) {
         message += L"Please contact your administrator.";
 
         MessageBox(hwnd, message.c_str(), L"License Suspended", MB_OK | MB_ICONERROR);
-        SetWindowText(g_hWndStatus, L"✗ License Suspended");
+        SetWindowText(g_hWndStatus, L"[X] License Suspended");
 
         DeleteLicenseKey();
         SendMessage(g_hWndCheck, BM_SETCHECK, BST_UNCHECKED, 0);
@@ -235,7 +249,7 @@ void ValidateLicense(HWND hwnd) {
         }
 
         MessageBox(hwnd, message.c_str(), L"Error", MB_OK | MB_ICONERROR);
-        SetWindowText(g_hWndStatus, L"✗ Authentication Failed");
+        SetWindowText(g_hWndStatus, L"[X] Authentication Failed");
     }
 }
 
@@ -294,16 +308,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                                        50, 220, 400, 40, hwnd, (HMENU)1, NULL, NULL);
             SendMessage(g_hWndButton, WM_SETFONT, (WPARAM)g_hFontNormal, TRUE);
 
-            // Clear button
-            HWND hClear = CreateWindow(L"BUTTON", L"Clear",
-                                      WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                      50, 270, 400, 35, hwnd, (HMENU)2, NULL, NULL);
-            SendMessage(hClear, WM_SETFONT, (WPARAM)g_hFontNormal, TRUE);
-
             // Status label
             g_hWndStatus = CreateWindow(L"STATIC", L"",
                                        WS_CHILD | WS_VISIBLE | SS_CENTER,
-                                       50, 320, 400, 30, hwnd, NULL, NULL, NULL);
+                                       50, 280, 400, 30, hwnd, NULL, NULL, NULL);
             SendMessage(g_hWndStatus, WM_SETFONT, (WPARAM)g_hFontStatus, TRUE);
 
             // Load saved key
@@ -333,18 +341,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_COMMAND: {
             if (LOWORD(wParam) == 1) { // Login button
                 ValidateLicense(hwnd);
-            }
-            else if (LOWORD(wParam) == 2) { // Clear button
-                SetWindowText(g_hWndEdit, L"");
-                SetWindowText(g_hWndStatus, L"");
-
-                if (SendMessage(g_hWndCheck, BM_GETCHECK, 0, 0) == BST_CHECKED) {
-                    if (MessageBox(hwnd, L"Remove saved license key?", L"Confirm",
-                                  MB_YESNO | MB_ICONQUESTION) == IDYES) {
-                        DeleteLicenseKey();
-                        SendMessage(g_hWndCheck, BM_SETCHECK, BST_UNCHECKED, 0);
-                    }
-                }
             }
             break;
         }
@@ -389,7 +385,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     HWND hwnd = CreateWindowEx(0, L"SecureLicenseClass", APP_TITLE,
                                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                               CW_USEDEFAULT, CW_USEDEFAULT, 520, 420,
+                               CW_USEDEFAULT, CW_USEDEFAULT, 520, 370,
                                NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL) {
