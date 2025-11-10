@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
 import secrets
 import hashlib
 import os
@@ -10,6 +11,14 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///license.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Upload configuration
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'updates')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
+
+# Create upload folder if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
 
@@ -76,6 +85,21 @@ class AdminUser(db.Model):
 
     def __repr__(self):
         return f'<AdminUser {self.username}>'
+
+class AppVersion(db.Model):
+    """Application version management for auto-updates"""
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(20), nullable=False)  # e.g., "1.0.0"
+    is_current = db.Column(db.Boolean, default=False)  # Only one should be True
+    filename = db.Column(db.String(255), nullable=False)  # Stored zip filename
+    file_size = db.Column(db.Integer, nullable=False)  # File size in bytes
+    release_notes = db.Column(db.Text, nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_by = db.Column(db.String(80), nullable=False)
+    download_count = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return f'<AppVersion {self.version}>'
 
 # Helper Functions
 def hash_key(key):
@@ -319,6 +343,114 @@ def admin_delete_license(license_id):
     return redirect(url_for('admin_licenses'))
 
 # ============================================================================
+# VERSION MANAGEMENT ROUTES
+# ============================================================================
+
+@app.route('/admin/versions')
+@login_required
+def admin_versions():
+    """List all app versions"""
+    versions = AppVersion.query.order_by(AppVersion.uploaded_at.desc()).all()
+    current_version = AppVersion.query.filter_by(is_current=True).first()
+    return render_template('versions.html', versions=versions, current_version=current_version)
+
+@app.route('/admin/versions/upload', methods=['GET', 'POST'])
+@login_required
+def admin_upload_version():
+    """Upload new version"""
+    if request.method == 'POST':
+        version = request.form.get('version')
+        release_notes = request.form.get('release_notes', '')
+
+        if 'update_file' not in request.files:
+            flash('No file uploaded', 'danger')
+            return redirect(url_for('admin_upload_version'))
+
+        file = request.files['update_file']
+
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(url_for('admin_upload_version'))
+
+        if not file.filename.endswith('.zip'):
+            flash('Only ZIP files are allowed', 'danger')
+            return redirect(url_for('admin_upload_version'))
+
+        if not version:
+            flash('Version number is required', 'danger')
+            return redirect(url_for('admin_upload_version'))
+
+        # Check if version already exists
+        existing = AppVersion.query.filter_by(version=version).first()
+        if existing:
+            flash(f'Version {version} already exists', 'warning')
+            return redirect(url_for('admin_versions'))
+
+        # Save file
+        filename = f"update_v{version}.zip"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Get file size
+        file_size = os.path.getsize(filepath)
+
+        # Create version record
+        new_version = AppVersion(
+            version=version,
+            filename=filename,
+            file_size=file_size,
+            release_notes=release_notes,
+            uploaded_by=session.get('admin_username', 'admin'),
+            is_current=False
+        )
+
+        db.session.add(new_version)
+        db.session.commit()
+
+        flash(f'Version {version} uploaded successfully! Set it as current to enable auto-updates.', 'success')
+        return redirect(url_for('admin_versions'))
+
+    return render_template('upload_version.html')
+
+@app.route('/admin/versions/<int:version_id>/set-current', methods=['POST'])
+@login_required
+def admin_set_current_version(version_id):
+    """Set a version as current"""
+    version = AppVersion.query.get_or_404(version_id)
+
+    # Unset all other versions
+    AppVersion.query.update({'is_current': False})
+
+    # Set this version as current
+    version.is_current = True
+    db.session.commit()
+
+    flash(f'Version {version.version} is now the current version', 'success')
+    return redirect(url_for('admin_versions'))
+
+@app.route('/admin/versions/<int:version_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_version(version_id):
+    """Delete a version"""
+    version = AppVersion.query.get_or_404(version_id)
+
+    if version.is_current:
+        flash('Cannot delete the current version. Set another version as current first.', 'danger')
+        return redirect(url_for('admin_versions'))
+
+    # Delete file
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], version.filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    version_num = version.version
+    db.session.delete(version)
+    db.session.commit()
+
+    flash(f'Version {version_num} has been deleted', 'info')
+    return redirect(url_for('admin_versions'))
+
+# ============================================================================
 # API ENDPOINTS (for client authentication)
 # ============================================================================
 
@@ -424,6 +556,50 @@ def get_stats():
             'logins_24h': recent_logins
         }
     }), 200
+
+# ============================================================================
+# UPDATE API ENDPOINTS (for client auto-update)
+# ============================================================================
+
+@app.route('/api/version/check', methods=['GET'])
+def check_version():
+    """Check for available updates"""
+    current_version = AppVersion.query.filter_by(is_current=True).first()
+
+    if not current_version:
+        return jsonify({
+            'update_available': False,
+            'message': 'No version set'
+        }), 200
+
+    return jsonify({
+        'update_available': True,
+        'version': current_version.version,
+        'file_size': current_version.file_size,
+        'release_notes': current_version.release_notes,
+        'download_url': url_for('download_update', version_id=current_version.id, _external=True)
+    }), 200
+
+@app.route('/api/version/download/<int:version_id>')
+def download_update(version_id):
+    """Download update package"""
+    version = AppVersion.query.get_or_404(version_id)
+
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], version.filename)
+
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'Update file not found'}), 404
+
+    # Increment download count
+    version.download_count += 1
+    db.session.commit()
+
+    return send_file(
+        filepath,
+        as_attachment=True,
+        download_name=version.filename,
+        mimetype='application/zip'
+    )
 
 @app.route('/health', methods=['GET'])
 def health():

@@ -9,10 +9,24 @@
 #include <QStorageInfo>
 #include <QTimer>
 #include <QDebug>
+#include <QFile>
+#include <QDir>
+#include <QProcess>
+#include <QProgressDialog>
+#include <QNetworkRequest>
+#include <QTemporaryFile>
+#include <QStandardPaths>
+
+// QuaZip for handling ZIP files
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , currentVersion("1.0.0")  // SET YOUR APP VERSION HERE
+    , downloadReply(nullptr)
 {
     ui->setupUi(this);
 
@@ -28,7 +42,10 @@ MainWindow::MainWindow(QWidget *parent)
     bool rememberKey = settings->value("rememberKey", false).toBool();
     ui->rememberCheckBox->setChecked(rememberKey);
 
-    // Auto-login if key is saved
+    // Check for updates on startup
+    checkForUpdates();
+
+    // Auto-login if key is saved (with delay to allow update check)
     if (rememberKey && hasSavedKey()) {
         QString savedKey = loadKey();
         ui->keyLineEdit->setText(savedKey);
@@ -268,4 +285,191 @@ void MainWindow::on_rememberCheckBox_toggled(bool checked)
     if (!checked && hasSavedKey()) {
         clearKey();
     }
+}
+
+// ============================================================================
+// AUTO-UPDATE FUNCTIONS
+// ============================================================================
+
+void MainWindow::checkForUpdates()
+{
+    QUrl url("http://localhost:5000/api/version/check");
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        handleUpdateCheckReply(reply);
+    });
+}
+
+void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
+{
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "Update check failed:" << reply->errorString();
+        return; // Silently fail - don't interrupt user experience
+    }
+
+    QByteArray response = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(response);
+    QJsonObject obj = doc.object();
+
+    bool updateAvailable = obj["update_available"].toBool();
+
+    if (!updateAvailable) {
+        qDebug() << "No updates available";
+        return;
+    }
+
+    QString serverVersion = obj["version"].toString();
+    qint64 fileSize = obj["file_size"].toInteger();
+    QString releaseNotes = obj["release_notes"].toString();
+    QString downloadUrl = obj["download_url"].toString();
+
+    // Compare versions (simple string comparison for now)
+    if (serverVersion == currentVersion) {
+        qDebug() << "Already on latest version:" << currentVersion;
+        return;
+    }
+
+    // Show update dialog
+    QString message = QString("A new version is available!\n\n"
+                             "Current version: %1\n"
+                             "New version: %2\n"
+                             "Size: %3 MB\n\n")
+                        .arg(currentVersion)
+                        .arg(serverVersion)
+                        .arg(fileSize / 1024.0 / 1024.0, 0, 'f', 2);
+
+    if (!releaseNotes.isEmpty()) {
+        message += "Release Notes:\n" + releaseNotes + "\n\n";
+    }
+
+    message += "Would you like to download and install the update?";
+
+    int ret = QMessageBox::question(this, "Update Available", message,
+                                     QMessageBox::Yes | QMessageBox::No);
+
+    if (ret == QMessageBox::Yes) {
+        downloadUpdate(downloadUrl, serverVersion);
+    }
+}
+
+void MainWindow::downloadUpdate(const QString &downloadUrl, const QString &version)
+{
+    QUrl url(downloadUrl);
+    QNetworkRequest request(url);
+
+    QNetworkReply *reply = networkManager->get(request);
+    downloadReply = reply;
+
+    // Create progress dialog
+    QProgressDialog *progress = new QProgressDialog("Downloading update...", "Cancel", 0, 100, this);
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setMinimumDuration(0);
+    progress->setValue(0);
+
+    // Connect download progress
+    connect(reply, &QNetworkReply::downloadProgress, this, [progress](qint64 bytesReceived, qint64 bytesTotal) {
+        if (bytesTotal > 0) {
+            int percent = (int)((bytesReceived * 100) / bytesTotal);
+            progress->setValue(percent);
+        }
+    });
+
+    // Connect cancel button
+    connect(progress, &QProgressDialog::canceled, this, [reply]() {
+        reply->abort();
+    });
+
+    // Handle download completion
+    connect(reply, &QNetworkReply::finished, this, [this, reply, progress, version]() {
+        progress->close();
+        progress->deleteLater();
+        reply->deleteLater();
+        downloadReply = nullptr;
+
+        if (reply->error() != QNetworkReply::NoError) {
+            QMessageBox::warning(this, "Download Failed",
+                               "Failed to download update:\n" + reply->errorString());
+            return;
+        }
+
+        // Save update file
+        QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+        QString updateFilePath = tempDir + "/update_v" + version + ".zip";
+
+        QFile file(updateFilePath);
+        if (!file.open(QIODevice::WriteOnly)) {
+            QMessageBox::critical(this, "Error", "Failed to save update file:\n" + file.errorString());
+            return;
+        }
+
+        file.write(reply->readAll());
+        file.close();
+
+        // Apply update
+        if (applyUpdate(updateFilePath)) {
+            QMessageBox::information(this, "Update Complete",
+                                   "Update has been downloaded successfully.\n"
+                                   "The application will now restart to apply the update.");
+            
+            // Restart application
+            QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
+            QApplication::quit();
+        } else {
+            QMessageBox::critical(this, "Update Failed",
+                                "Failed to apply the update.\n"
+                                "Please update manually or contact support.");
+        }
+    });
+}
+
+bool MainWindow::applyUpdate(const QString &updateFilePath)
+{
+    // For Windows, we'll create a batch script to replace files after app closes
+    #ifdef Q_OS_WIN
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString batchPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/update.bat";
+
+    QFile batchFile(batchPath);
+    if (!batchFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    QTextStream out(&batchFile);
+    out << "@echo off\n";
+    out << "echo Applying update...\n";
+    out << "timeout /t 2 /nobreak >nul\n";  // Wait for app to close
+    
+    // Use PowerShell to extract ZIP
+    out << "powershell -Command \"Expand-Archive -Path '" << updateFilePath << "' -DestinationPath '" << appDir << "' -Force\"\n";
+    
+    out << "if %errorlevel% neq 0 (\n";
+    out << "    echo Update failed!\n";
+    out << "    pause\n";
+    out << "    exit /b 1\n";
+    out << ")\n";
+    out << "echo Update complete!\n";
+    
+    // Restart the application
+    out << "start \"\" \"" << QCoreApplication::applicationFilePath() << "\"\n";
+    
+    // Delete the batch file and update zip
+    out << "del \"" << updateFilePath << "\"\n";
+    out << "del \"%~f0\"\n";  // Delete self
+    
+    batchFile.close();
+
+    // Execute the batch file
+    QProcess::startDetached("cmd.exe", QStringList() << "/c" << batchPath);
+    
+    return true;
+    #else
+    // For Linux/Mac, you'd need to implement similar logic
+    // This is a simplified version
+    return false;
+    #endif
 }

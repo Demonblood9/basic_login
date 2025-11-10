@@ -23,6 +23,8 @@ private slots:
     void on_clearButton_clicked();
     void on_rememberCheckBox_toggled(bool checked);
     void handleNetworkReply(QNetworkReply *reply);
+    void handleUpdateCheckReply(QNetworkReply *reply);
+    void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     Ui::MainWindow *ui;
@@ -38,6 +40,14 @@ private:
     void showSuccess(const QString &username, const QString &expires, int daysRemaining, bool isPermanent);
     void showError(const QString &message);
     void autoLogin();
+
+    // Auto-update functions
+    void checkForUpdates();
+    void downloadUpdate(const QString &downloadUrl, const QString &version);
+    bool applyUpdate(const QString &updateFilePath);
+
+    QString currentVersion;
+    QNetworkReply *downloadReply;
 };
 
 #endif // MAINWINDOW_H
