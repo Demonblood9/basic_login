@@ -22,8 +22,12 @@ HWND hKeyEdit;
 HWND hLoginButton;
 HWND hStatusLabel;
 HWND hResultLabel;
+HWND hKeyLabel;
 HFONT hTitleFont;
 HFONT hNormalFont;
+HFONT hLabelFont;
+HBRUSH hBackgroundBrush;
+HBRUSH hPanelBrush;
 
 // Server configuration
 const wchar_t* SERVER_HOST = L"localhost";
@@ -222,45 +226,70 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Create title label
             HWND hTitle = CreateWindowW(L"STATIC", L"Secure Key Authentication",
                 WS_VISIBLE | WS_CHILD | SS_CENTER,
-                0, 20, 500, 40,
+                0, 25, 540, 45,
                 hwnd, NULL, NULL, NULL);
             SendMessage(hTitle, WM_SETFONT, (WPARAM)hTitleFont, TRUE);
 
             // Create key label
-            CreateWindowW(L"STATIC", L"Enter your access key:",
+            hKeyLabel = CreateWindowW(L"STATIC", L"Access Key:",
                 WS_VISIBLE | WS_CHILD,
-                50, 80, 200, 20,
+                60, 95, 420, 22,
                 hwnd, NULL, NULL, NULL);
+            SendMessage(hKeyLabel, WM_SETFONT, (WPARAM)hLabelFont, TRUE);
 
-            // Create key input (edit control)
+            // Create key input (edit control with better styling)
             hKeyEdit = CreateWindowW(L"EDIT", L"",
                 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,
-                50, 105, 400, 30,
+                60, 120, 420, 32,
                 hwnd, (HMENU)IDC_KEY_EDIT, NULL, NULL);
             SendMessage(hKeyEdit, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
             // Create login button
             hLoginButton = CreateWindowW(L"BUTTON", L"Login",
                 WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                200, 150, 100, 35,
+                215, 170, 110, 40,
                 hwnd, (HMENU)IDC_LOGIN_BUTTON, NULL, NULL);
             SendMessage(hLoginButton, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
-            // Create status label (larger and better positioned)
+            // Create status label
             hStatusLabel = CreateWindowW(L"STATIC", L"",
                 WS_VISIBLE | WS_CHILD | SS_CENTER,
-                30, 210, 440, 30,
+                40, 235, 460, 32,
                 hwnd, (HMENU)IDC_STATUS_LABEL, NULL, NULL);
             SendMessage(hStatusLabel, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
-            // Create result label (multiline support)
+            // Create result label
             hResultLabel = CreateWindowW(L"STATIC", L"",
-                WS_VISIBLE | WS_CHILD | SS_CENTER | SS_CENTERIMAGE,
-                30, 250, 440, 80,
+                WS_VISIBLE | WS_CHILD | SS_CENTER,
+                40, 275, 460, 80,
                 hwnd, (HMENU)IDC_RESULT_LABEL, NULL, NULL);
             SendMessage(hResultLabel, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
             return 0;
+        }
+
+        case WM_ERASEBKGND: {
+            HDC hdc = (HDC)wParam;
+            RECT rect;
+            GetClientRect(hwnd, &rect);
+
+            // Paint background with gradient effect
+            FillRect(hdc, &rect, hBackgroundBrush);
+
+            // Draw white panel for the form area
+            RECT panelRect = {30, 80, 510, 365};
+            FillRect(hdc, &panelRect, hPanelBrush);
+
+            // Draw border around panel
+            HPEN hPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+            HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Rectangle(hdc, 30, 80, 510, 365);
+            SelectObject(hdc, hOldPen);
+            SelectObject(hdc, hOldBrush);
+            DeleteObject(hPen);
+
+            return 1;
         }
 
         case WM_COMMAND: {
@@ -273,34 +302,65 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 // Validate input
                 if (keyStr.empty()) {
-                    SetWindowTextW(hStatusLabel, L"Please enter an access key");
+                    // Clear old text and force redraw
+                    SetWindowTextW(hStatusLabel, L"");
                     SetWindowTextW(hResultLabel, L"");
+                    InvalidateRect(hStatusLabel, NULL, TRUE);
+                    InvalidateRect(hResultLabel, NULL, TRUE);
+                    UpdateWindow(hStatusLabel);
+                    UpdateWindow(hResultLabel);
+
+                    SetWindowTextW(hStatusLabel, L"⚠ Please enter an access key");
+                    InvalidateRect(hStatusLabel, NULL, TRUE);
+                    UpdateWindow(hStatusLabel);
                     return 0;
                 }
 
-                // Disable button during validation
-                EnableWindow(hLoginButton, FALSE);
-                SetWindowTextW(hStatusLabel, L"Validating...");
+                // Clear previous messages and disable button
+                SetWindowTextW(hStatusLabel, L"");
                 SetWindowTextW(hResultLabel, L"");
-                UpdateWindow(hwnd);
+                InvalidateRect(hStatusLabel, NULL, TRUE);
+                InvalidateRect(hResultLabel, NULL, TRUE);
+                UpdateWindow(hStatusLabel);
+                UpdateWindow(hResultLabel);
+
+                EnableWindow(hLoginButton, FALSE);
+                SetWindowTextW(hStatusLabel, L"⌛ Validating...");
+                InvalidateRect(hStatusLabel, NULL, TRUE);
+                UpdateWindow(hStatusLabel);
 
                 // Validate key with server
                 std::wstring username, message;
                 bool success = ValidateKey(keyStr, username, message);
 
-                // Enable button
+                // Clear and update status
+                SetWindowTextW(hStatusLabel, L"");
+                SetWindowTextW(hResultLabel, L"");
+                InvalidateRect(hStatusLabel, NULL, TRUE);
+                InvalidateRect(hResultLabel, NULL, TRUE);
+                UpdateWindow(hStatusLabel);
+                UpdateWindow(hResultLabel);
+
                 EnableWindow(hLoginButton, TRUE);
 
                 if (success) {
                     SetWindowTextW(hStatusLabel, L"✓ Authentication Successful!");
                     std::wstring resultText = L"Welcome, " + username + L"!\n\nYou have been successfully authenticated.";
                     SetWindowTextW(hResultLabel, resultText.c_str());
+                    InvalidateRect(hStatusLabel, NULL, TRUE);
+                    InvalidateRect(hResultLabel, NULL, TRUE);
+                    UpdateWindow(hStatusLabel);
+                    UpdateWindow(hResultLabel);
 
                     // You could proceed to open main application here
                     MessageBoxW(hwnd, resultText.c_str(), L"Login Successful", MB_OK | MB_ICONINFORMATION);
                 } else {
                     SetWindowTextW(hStatusLabel, L"✗ Authentication Failed");
                     SetWindowTextW(hResultLabel, message.c_str());
+                    InvalidateRect(hStatusLabel, NULL, TRUE);
+                    InvalidateRect(hResultLabel, NULL, TRUE);
+                    UpdateWindow(hStatusLabel);
+                    UpdateWindow(hResultLabel);
                 }
 
                 return 0;
@@ -312,29 +372,60 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             HDC hdcStatic = (HDC)wParam;
             HWND hwndStatic = (HWND)lParam;
 
+            // Status label with color coding
             if (hwndStatic == hStatusLabel) {
                 wchar_t text[256];
                 GetWindowTextW(hwndStatic, text, 256);
                 std::wstring statusText(text);
 
                 if (statusText.find(L"✓") != std::wstring::npos) {
-                    SetTextColor(hdcStatic, RGB(0, 128, 0)); // Green
+                    SetTextColor(hdcStatic, RGB(34, 139, 34)); // Forest Green
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                    return (LRESULT)hPanelBrush;
                 } else if (statusText.find(L"✗") != std::wstring::npos) {
-                    SetTextColor(hdcStatic, RGB(192, 0, 0)); // Red
+                    SetTextColor(hdcStatic, RGB(220, 20, 60)); // Crimson Red
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                    return (LRESULT)hPanelBrush;
+                } else if (statusText.find(L"⚠") != std::wstring::npos) {
+                    SetTextColor(hdcStatic, RGB(255, 140, 0)); // Dark Orange
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                    return (LRESULT)hPanelBrush;
+                } else if (statusText.find(L"⌛") != std::wstring::npos) {
+                    SetTextColor(hdcStatic, RGB(70, 130, 180)); // Steel Blue
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                    return (LRESULT)hPanelBrush;
                 } else {
-                    SetTextColor(hdcStatic, RGB(0, 0, 0)); // Black
+                    SetTextColor(hdcStatic, RGB(64, 64, 64)); // Dark Gray
+                    SetBkMode(hdcStatic, TRANSPARENT);
+                    return (LRESULT)hPanelBrush;
                 }
-                SetBkMode(hdcStatic, TRANSPARENT);
-                return (LRESULT)GetStockObject(NULL_BRUSH);
             }
 
+            // Result label
+            if (hwndStatic == hResultLabel) {
+                SetTextColor(hdcStatic, RGB(64, 64, 64)); // Dark Gray
+                SetBkMode(hdcStatic, TRANSPARENT);
+                return (LRESULT)hPanelBrush;
+            }
+
+            // Key label
+            if (hwndStatic == hKeyLabel) {
+                SetTextColor(hdcStatic, RGB(64, 64, 64)); // Dark Gray
+                SetBkMode(hdcStatic, TRANSPARENT);
+                return (LRESULT)hPanelBrush;
+            }
+
+            // Default for other static controls
             SetBkMode(hdcStatic, TRANSPARENT);
-            return (LRESULT)GetStockObject(NULL_BRUSH);
+            return (LRESULT)hBackgroundBrush;
         }
 
         case WM_DESTROY: {
             DeleteObject(hTitleFont);
             DeleteObject(hNormalFont);
+            DeleteObject(hLabelFont);
+            DeleteObject(hBackgroundBrush);
+            DeleteObject(hPanelBrush);
             PostQuitMessage(0);
             return 0;
         }
@@ -352,13 +443,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     InitCommonControlsEx(&icex);
 
     // Create fonts
-    hTitleFont = CreateFontW(28, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+    hTitleFont = CreateFontW(32, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
         CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
-    hNormalFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+    hNormalFont = CreateFontW(15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
         CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+
+    hLabelFont = CreateFontW(14, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+
+    // Create brushes for background colors
+    hBackgroundBrush = CreateSolidBrush(RGB(240, 244, 248)); // Light blue-gray background
+    hPanelBrush = CreateSolidBrush(RGB(255, 255, 255)); // White panel
 
     // Register window class
     const wchar_t CLASS_NAME[] = L"SecureLoginWindow";
@@ -368,17 +467,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = hBackgroundBrush;
 
     RegisterClassW(&wc);
 
-    // Create window
+    // Create window with exact client size
+    RECT windowRect = {0, 0, 540, 400};
+    AdjustWindowRect(&windowRect, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
+
     HWND hwnd = CreateWindowExW(
         0,
         CLASS_NAME,
         L"Secure Login System",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        windowRect.right - windowRect.left,
+        windowRect.bottom - windowRect.top,
         NULL,
         NULL,
         hInstance,
@@ -388,6 +492,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     if (hwnd == NULL) {
         return 0;
     }
+
+    // Center window on screen
+    RECT rcWindow;
+    GetWindowRect(hwnd, &rcWindow);
+    int xPos = (GetSystemMetrics(SM_CXSCREEN) - (rcWindow.right - rcWindow.left)) / 2;
+    int yPos = (GetSystemMetrics(SM_CYSCREEN) - (rcWindow.bottom - rcWindow.top)) / 2;
+    SetWindowPos(hwnd, NULL, xPos, yPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
