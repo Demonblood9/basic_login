@@ -183,7 +183,12 @@ void ValidateLicense(HWND hwnd) {
         return;
     }
 
-    if (response.find(L"\"success\":true") != std::wstring::npos) {
+    // Debug: Show the actual response
+    std::wstring debugMsg = L"Server Response:\n\n";
+    debugMsg += response;
+    MessageBox(hwnd, debugMsg.c_str(), L"Debug - Server Response", MB_OK | MB_ICONINFORMATION);
+
+    if (response.find(L"\"success\":true") != std::wstring::npos || response.find(L"\"success\": true") != std::wstring::npos) {
         // Save key if remember is checked
         if (SendMessage(g_hWndCheck, BM_GETCHECK, 0, 0) == BST_CHECKED) {
             SaveLicenseKey(key);
