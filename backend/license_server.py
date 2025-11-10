@@ -501,7 +501,12 @@ def validate_license():
     """Validate license key with HWID binding"""
     data = request.get_json()
 
+    # Debug logging
+    print("\n=== DEBUG: Validate License ===")
+    print(f"Received data: {data}")
+
     if not data or 'key' not in data or 'hwid' not in data:
+        print("ERROR: Missing key or hwid in request")
         return jsonify({
             'success': False,
             'message': 'License key and HWID required'
@@ -511,8 +516,15 @@ def validate_license():
     hwid = data['hwid']
     ip_address = get_client_ip()
 
+    print(f"Key received: {key}")
+    print(f"HWID received: {hwid}")
+    print(f"IP address: {ip_address}")
+
     key_hash = hash_key(key)
+    print(f"Key hash: {key_hash}")
+
     license_key = LicenseKey.query.filter_by(key_hash=key_hash).first()
+    print(f"License found in DB: {license_key is not None}")
 
     def record_login(license_obj, success, reason=None):
         if license_obj:
@@ -527,9 +539,15 @@ def validate_license():
             db.session.commit()
 
     if not license_key:
+        print("ERROR: License key not found in database")
         return jsonify({'success': False, 'message': 'Invalid license key'}), 401
 
+    print(f"License details - Username: {license_key.username}, Active: {license_key.is_active}, Suspended: {license_key.is_suspended}")
+    print(f"License HWID in DB: {license_key.hwid}")
+    print(f"License expires: {license_key.expires_at}")
+
     if license_key.is_suspended:
+        print(f"ERROR: License is suspended - {license_key.suspension_reason}")
         record_login(license_key, False, f'Suspended: {license_key.suspension_reason}')
         return jsonify({
             'success': False,
@@ -537,20 +555,24 @@ def validate_license():
         }), 403
 
     if license_key.is_expired():
+        print("ERROR: License has expired")
         record_login(license_key, False, 'License expired')
         return jsonify({'success': False, 'message': 'License has expired'}), 403
 
     if not license_key.is_active:
+        print("ERROR: License is not active")
         record_login(license_key, False, 'License inactive')
         return jsonify({'success': False, 'message': 'License is inactive'}), 403
 
     # HWID Binding Check
     if license_key.hwid is None:
+        print("INFO: First time login - binding HWID")
         license_key.hwid = hwid
         license_key.ip_address = ip_address
         license_key.last_login = datetime.utcnow()
         db.session.commit()
     elif license_key.hwid != hwid:
+        print(f"ERROR: HWID mismatch - DB: {license_key.hwid}, Client: {hwid}")
         license_key.is_suspended = True
         license_key.suspension_reason = f'HWID violation detected. Registered: {license_key.hwid[:16]}..., Attempted: {hwid[:16]}...'
         db.session.commit()
@@ -560,12 +582,16 @@ def validate_license():
             'message': 'HWID mismatch detected. License has been automatically suspended for security.',
             'details': 'This key is registered to another machine. Contact administrator.'
         }), 403
+    else:
+        print("INFO: HWID matches")
 
     license_key.last_login = datetime.utcnow()
     license_key.ip_address = ip_address
     db.session.commit()
 
     record_login(license_key, True)
+
+    print("SUCCESS: Authentication successful")
 
     # Format expiration date as "December 12 2025 - 09:00 (EST)"
     expires_formatted = 'Never'
