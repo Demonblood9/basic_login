@@ -373,13 +373,32 @@ void MainWindow::handleNetworkReply(QNetworkReply *reply)
             settings->setValue("rememberKey", true);
         }
     } else {
-        showError(message);
+        // Check if license is suspended
+        if (message.contains("suspended", Qt::CaseInsensitive)) {
+            ui->statusLabel->setText("✗ License Suspended");
+            ui->statusLabel->setStyleSheet("color: #ff3030; font-weight: bold;");
+            ui->detailsLabel->setText("Your license has been suspended");
+            ui->detailsLabel->setStyleSheet("color: #ff6060;");
 
-        // If HWID violation, clear saved key
-        if (message.contains("HWID") || message.contains("suspended")) {
+            // Show critical dialog
+            QMessageBox::critical(this, "License Suspended",
+                                 "Your license has been suspended.\n\n"
+                                 "Reason: " + message + "\n\n"
+                                 "Please contact your administrator for assistance.");
+
+            // Clear saved key
             clearKey();
             ui->rememberCheckBox->setChecked(false);
             settings->setValue("rememberKey", false);
+        } else {
+            showError(message);
+
+            // If HWID violation, clear saved key
+            if (message.contains("HWID")) {
+                clearKey();
+                ui->rememberCheckBox->setChecked(false);
+                settings->setValue("rememberKey", false);
+            }
         }
     }
 
