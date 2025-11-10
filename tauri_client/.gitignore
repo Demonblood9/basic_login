@@ -1,0 +1,26 @@
+# Tauri
+/src-tauri/target
+/src-tauri/Cargo.lock
+
+# Node
+/node_modules
+package-lock.json
+
+# Build outputs
+/dist
+*.exe
+*.dmg
+*.app
+*.AppImage
+*.deb
+*.rpm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
