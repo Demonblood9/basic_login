@@ -79,9 +79,14 @@
                     <label class="form-label fw-bold text-muted small">LICENSE KEY</label>
                     <div class="p-3 bg-light rounded d-flex align-items-center justify-content-between">
                         <code class="text-primary" id="licenseKey" style="flex: 1;">••••••••••••••••••••••••••••••••</code>
-                        <button type="button" class="btn btn-sm btn-outline-primary ms-3" onclick="toggleLicenseKey()" id="toggleBtn">
-                            <i class="bi bi-eye"></i> Show
-                        </button>
+                        <div class="btn-group ms-3" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleLicenseKey()" id="toggleBtn">
+                                <i class="bi bi-eye"></i> Show
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="copyLicenseKey()" id="copyBtn">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
                     </div>
                     <input type="hidden" id="actualKey" value="{{ license.license_key }}">
                 </div>
@@ -445,6 +450,47 @@ function toggleLicenseKey() {
     }
 
     keyVisible = !keyVisible;
+}
+
+function copyLicenseKey() {
+    const actualKey = document.getElementById('actualKey').value;
+    const copyBtn = document.getElementById('copyBtn');
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(actualKey).then(function() {
+        // Change button to show success
+        const originalHTML = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        copyBtn.classList.remove('btn-outline-success');
+        copyBtn.classList.add('btn-success');
+
+        // Reset button after 2 seconds
+        setTimeout(function() {
+            copyBtn.innerHTML = originalHTML;
+            copyBtn.classList.remove('btn-success');
+            copyBtn.classList.add('btn-outline-success');
+        }, 2000);
+    }).catch(function(err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = actualKey;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        // Show success feedback
+        const originalHTML = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        copyBtn.classList.remove('btn-outline-success');
+        copyBtn.classList.add('btn-success');
+
+        setTimeout(function() {
+            copyBtn.innerHTML = originalHTML;
+            copyBtn.classList.remove('btn-success');
+            copyBtn.classList.add('btn-outline-success');
+        }, 2000);
+    });
 }
 </script>
 

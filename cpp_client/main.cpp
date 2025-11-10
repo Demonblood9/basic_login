@@ -169,7 +169,7 @@ void ValidateLicense(HWND hwnd) {
 
     EnableWindow(g_hWndButton, TRUE);
 
-    // Debug: Check if we got a response
+    // Check if we got a response
     if (response.empty()) {
         std::wstring debugMsg = L"Connection Error\n\n";
         debugMsg += L"Could not connect to server at http://localhost:5000\n\n";
@@ -182,11 +182,6 @@ void ValidateLicense(HWND hwnd) {
         SetWindowText(g_hWndStatus, L"[X] Connection Failed");
         return;
     }
-
-    // Debug: Show the actual response
-    std::wstring debugMsg = L"Server Response:\n\n";
-    debugMsg += response;
-    MessageBox(hwnd, debugMsg.c_str(), L"Debug - Server Response", MB_OK | MB_ICONINFORMATION);
 
     if (response.find(L"\"success\":true") != std::wstring::npos || response.find(L"\"success\": true") != std::wstring::npos) {
         // Save key if remember is checked
@@ -319,11 +314,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                                        50, 280, 400, 30, hwnd, NULL, NULL, NULL);
             SendMessage(g_hWndStatus, WM_SETFONT, (WPARAM)g_hFontStatus, TRUE);
 
-            // Load saved key
+            // Load saved key and auto-login
             std::wstring savedKey = LoadLicenseKey();
             if (!savedKey.empty()) {
                 SetWindowText(g_hWndEdit, savedKey.c_str());
                 SendMessage(g_hWndCheck, BM_SETCHECK, BST_CHECKED, 0);
+                // Trigger auto-login after window is created
+                PostMessage(hwnd, WM_COMMAND, MAKEWPARAM(1, BN_CLICKED), (LPARAM)g_hWndButton);
             }
 
             break;
