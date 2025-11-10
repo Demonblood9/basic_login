@@ -72,9 +72,10 @@ std::wstring StringToWString(const std::string& str) {
 // Convert wstring to string
 std::string WStringToString(const std::wstring& wstr) {
     if (wstr.empty()) return std::string();
-    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    // Don't include null terminator (-1) in the conversion for JSON data
+    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), NULL, 0, NULL, NULL);
     std::string str(size, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], size, NULL, NULL);
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), &str[0], size, NULL, NULL);
     return str;
 }
 
@@ -234,28 +235,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Create key input (edit control)
             hKeyEdit = CreateWindowW(L"EDIT", L"",
                 WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,
-                50, 105, 400, 25,
+                50, 105, 400, 30,
                 hwnd, (HMENU)IDC_KEY_EDIT, NULL, NULL);
             SendMessage(hKeyEdit, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
             // Create login button
             hLoginButton = CreateWindowW(L"BUTTON", L"Login",
                 WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                200, 145, 100, 35,
+                200, 150, 100, 35,
                 hwnd, (HMENU)IDC_LOGIN_BUTTON, NULL, NULL);
             SendMessage(hLoginButton, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
-            // Create status label
+            // Create status label (larger and better positioned)
             hStatusLabel = CreateWindowW(L"STATIC", L"",
                 WS_VISIBLE | WS_CHILD | SS_CENTER,
-                50, 195, 400, 25,
+                30, 210, 440, 30,
                 hwnd, (HMENU)IDC_STATUS_LABEL, NULL, NULL);
             SendMessage(hStatusLabel, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
-            // Create result label
+            // Create result label (multiline support)
             hResultLabel = CreateWindowW(L"STATIC", L"",
-                WS_VISIBLE | WS_CHILD | SS_CENTER,
-                50, 225, 400, 60,
+                WS_VISIBLE | WS_CHILD | SS_CENTER | SS_CENTERIMAGE,
+                30, 250, 440, 80,
                 hwnd, (HMENU)IDC_RESULT_LABEL, NULL, NULL);
             SendMessage(hResultLabel, WM_SETFONT, (WPARAM)hNormalFont, TRUE);
 
@@ -377,7 +378,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         CLASS_NAME,
         L"Secure Login System",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 500, 350,
+        CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
         NULL,
         NULL,
         hInstance,
