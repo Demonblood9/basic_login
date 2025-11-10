@@ -1,5 +1,26 @@
 cmake_minimum_required(VERSION 3.16)
-project(SecureLicenseClient VERSION 2.0 LANGUAGES CXX)
+
+# Read current version from VERSION file
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" VERSION_STRING)
+string(STRIP "${VERSION_STRING}" VERSION_STRING)
+
+# Parse version components
+string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${VERSION_STRING})
+set(VERSION_MAJOR ${CMAKE_MATCH_1})
+set(VERSION_MINOR ${CMAKE_MATCH_2})
+set(VERSION_PATCH ${CMAKE_MATCH_3})
+
+# Auto-increment patch version on each build
+math(EXPR VERSION_PATCH "${VERSION_PATCH} + 1")
+set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+
+# Write incremented version back to file
+file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" "${VERSION_STRING}\n")
+
+# Display version info
+message(STATUS "Building SecureLicenseClient version ${VERSION_STRING}")
+
+project(SecureLicenseClient VERSION ${VERSION_STRING} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +34,16 @@ endif()
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+
+# Generate version header file
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+    @ONLY
+)
+
+# Include the build directory for generated headers
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Source files
 set(PROJECT_SOURCES

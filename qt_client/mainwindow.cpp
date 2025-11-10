@@ -16,6 +16,7 @@
 #include <QNetworkRequest>
 #include <QTemporaryFile>
 #include <QStandardPaths>
+#include "version.h"
 
 // QuaZip for handling ZIP files
 #ifdef Q_OS_WIN
@@ -25,7 +26,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , currentVersion("1.0.0")  // SET YOUR APP VERSION HERE
+    , currentVersion(APP_VERSION_STRING)  // Auto-generated from VERSION file
     , downloadReply(nullptr)
 {
     ui->setupUi(this);
