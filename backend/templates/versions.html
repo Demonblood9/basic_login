@@ -38,6 +38,39 @@
     </div>
     {% endif %}
 
+    <!-- Storage Statistics -->
+    {% if versions %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-hdd-fill text-primary mb-2" style="font-size: 2rem;"></i>
+                    <h3 class="mb-1">{{ (total_size / 1024 / 1024)|round(2) }} MB</h3>
+                    <p class="text-muted mb-0">Total Storage Used</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-folder-fill text-success mb-2" style="font-size: 2rem;"></i>
+                    <h3 class="mb-1">{{ versions|length }}</h3>
+                    <p class="text-muted mb-0">Total Versions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-download text-info mb-2" style="font-size: 2rem;"></i>
+                    <h3 class="mb-1">{{ total_downloads }}</h3>
+                    <p class="text-muted mb-0">Total Downloads</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Versions List -->
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-primary text-white">

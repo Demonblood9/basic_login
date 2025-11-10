@@ -24,7 +24,6 @@ private slots:
     void on_rememberCheckBox_toggled(bool checked);
     void handleNetworkReply(QNetworkReply *reply);
     void handleUpdateCheckReply(QNetworkReply *reply);
-    void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     Ui::MainWindow *ui;

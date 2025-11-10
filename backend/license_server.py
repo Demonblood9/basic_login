@@ -352,7 +352,16 @@ def admin_versions():
     """List all app versions"""
     versions = AppVersion.query.order_by(AppVersion.uploaded_at.desc()).all()
     current_version = AppVersion.query.filter_by(is_current=True).first()
-    return render_template('versions.html', versions=versions, current_version=current_version)
+
+    # Calculate total disk space used
+    total_size = sum(v.file_size for v in versions)
+    total_downloads = sum(v.download_count for v in versions)
+
+    return render_template('versions.html',
+                         versions=versions,
+                         current_version=current_version,
+                         total_size=total_size,
+                         total_downloads=total_downloads)
 
 @app.route('/admin/versions/upload', methods=['GET', 'POST'])
 @login_required
