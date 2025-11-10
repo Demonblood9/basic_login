@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}License Created Successfully - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <div class="mb-3">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h2 class="mb-2">License Created Successfully!</h2>
+                <p class="text-muted">The license key has been generated and is ready to use</p>
+            </div>
+
+            <div class="card border-0 shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <div class="alert alert-warning mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>IMPORTANT:</strong> This license key will be shown only once. Make sure to copy and save it securely before leaving this page!
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small">USERNAME</label>
+                        <div class="p-3 bg-light rounded mb-3">
+                            <h5 class="mb-0">{{ username }}</h5>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small">LICENSE KEY</label>
+                        <div class="input-group input-group-lg">
+                            <input type="text"
+                                   class="form-control font-monospace"
+                                   id="licenseKey"
+                                   value="{{ license_key }}"
+                                   readonly>
+                            <button class="btn btn-primary btn-custom"
+                                    type="button"
+                                    id="copyBtn"
+                                    onclick="copyLicenseKey()">
+                                <i class="bi bi-clipboard" id="copyIcon"></i>
+                                <span id="copyText">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small">CREATED</label>
+                            <div class="p-3 bg-light rounded">
+                                <i class="bi bi-calendar-check me-2"></i>{{ created_at }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted small">EXPIRES</label>
+                            <div class="p-3 bg-light rounded">
+                                {% if expires_at %}
+                                    <i class="bi bi-calendar-x me-2"></i>{{ expires_at }}
+                                    <br><small class="text-muted">{{ days }} days from now</small>
+                                {% else %}
+                                    <i class="bi bi-infinity me-2"></i><strong class="text-primary">Permanent</strong>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4 bg-info bg-opacity-10">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-info-circle-fill me-2"></i>Next Steps
+                    </h5>
+                    <ol class="mb-0">
+                        <li class="mb-2"><strong>Copy the license key</strong> using the button above</li>
+                        <li class="mb-2"><strong>Send it to the user</strong> securely (email, encrypted message, etc.)</li>
+                        <li class="mb-2"><strong>User enters the key</strong> in the client application</li>
+                        <li class="mb-0"><strong>HWID automatically binds</strong> to their machine on first login</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-shield-check me-2"></i>Security Features Active
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul>
+                                <li><i class="bi bi-check-circle-fill text-success me-1"></i> HWID Binding</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-1"></i> IP Address Logging</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul>
+                                <li><i class="bi bi-check-circle-fill text-success me-1"></i> Auto-Suspension</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-1"></i> Login History Tracking</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('admin_create_license') }}" class="btn btn-primary btn-lg btn-custom">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Create Another License
+                </a>
+                <a href="{{ url_for('admin_licenses') }}" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-list-ul me-2"></i>View All Licenses
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-speedometer2 me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyLicenseKey() {
+        const licenseKeyInput = document.getElementById('licenseKey');
+        const copyBtn = document.getElementById('copyBtn');
+        const copyIcon = document.getElementById('copyIcon');
+        const copyText = document.getElementById('copyText');
+
+        // Select and copy the text
+        licenseKeyInput.select();
+        licenseKeyInput.setSelectionRange(0, 99999); // For mobile devices
+        document.execCommand('copy');
+
+        // Update button appearance
+        copyIcon.className = 'bi bi-check-lg';
+        copyText.textContent = 'Copied!';
+        copyBtn.classList.remove('btn-primary');
+        copyBtn.classList.add('btn-success');
+
+        // Reset after 2 seconds
+        setTimeout(function() {
+            copyIcon.className = 'bi bi-clipboard';
+            copyText.textContent = 'Copy';
+            copyBtn.classList.remove('btn-success');
+            copyBtn.classList.add('btn-primary');
+        }, 2000);
+    }
+
+    // Auto-select the license key on page load
+    window.onload = function() {
+        document.getElementById('licenseKey').select();
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}License #{{ license.id }} - {{ license.username }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-0">
+                <i class="bi bi-key-fill me-2"></i>License #{{ license.id }}
+            </h2>
+            <p class="text-muted mb-0">Detailed information and login history</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('admin_licenses') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to All Licenses
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Alert -->
+    {% if license.is_suspended %}
+    <div class="alert alert-danger d-flex align-items-center mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 2rem;"></i>
+        <div>
+            <h5 class="alert-heading mb-1">License Suspended</h5>
+            <p class="mb-0">{{ license.suspension_reason or 'No reason provided' }}</p>
+        </div>
+    </div>
+    {% elif license.is_expired() %}
+    <div class="alert alert-warning d-flex align-items-center mb-4">
+        <i class="bi bi-clock-history me-3" style="font-size: 2rem;"></i>
+        <div>
+            <h5 class="alert-heading mb-1">License Expired</h5>
+            <p class="mb-0">This license expired on {{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- License Information Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-info-circle-fill me-2"></i>License Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold text-muted small">USERNAME</label>
+                    <div class="p-3 bg-light rounded">
+                        <h5 class="mb-0"><i class="bi bi-person-fill me-2"></i>{{ license.username }}</h5>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold text-muted small">STATUS</label>
+                    <div class="p-3 bg-light rounded">
+                        {% if license.is_suspended %}
+                            <span class="badge badge-status bg-warning text-dark fs-6">
+                                <i class="bi bi-exclamation-triangle"></i> Suspended
+                            </span>
+                        {% elif license.is_expired() %}
+                            <span class="badge badge-status bg-danger fs-6">
+                                <i class="bi bi-x-circle"></i> Expired
+                            </span>
+                        {% elif not license.is_active %}
+                            <span class="badge badge-status bg-secondary fs-6">
+                                <i class="bi bi-dash-circle"></i> Inactive
+                            </span>
+                        {% else %}
+                            <span class="badge badge-status bg-success fs-6">
+                                <i class="bi bi-check-circle"></i> Active
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold text-muted small">LICENSE KEY HASH</label>
+                    <div class="p-3 bg-light rounded">
+                        <code class="text-primary">{{ license.key_hash[:32] }}...</code>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold text-muted small">HWID (Hardware ID)</label>
+                    <div class="p-3 bg-light rounded">
+                        {% if license.hwid %}
+                            <code class="text-success">{{ license.hwid[:32] }}...</code>
+                            <br><small class="text-success"><i class="bi bi-link-45deg"></i> Bound to machine</small>
+                        {% else %}
+                            <span class="text-muted">Not bound yet</span>
+                            <br><small class="text-muted">Will bind on first login</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold text-muted small">CREATED</label>
+                    <div class="p-3 bg-light rounded">
+                        <i class="bi bi-calendar-plus me-2"></i>{{ license.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold text-muted small">EXPIRES</label>
+                    <div class="p-3 bg-light rounded">
+                        {% if license.expires_at %}
+                            <i class="bi bi-calendar-x me-2"></i>{{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                            <br><small class="text-muted">{{ license.days_remaining() }} days remaining</small>
+                        {% else %}
+                            <i class="bi bi-infinity me-2"></i><strong class="text-primary">Permanent</strong>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold text-muted small">LAST LOGIN</label>
+                    <div class="p-3 bg-light rounded">
+                        {% if license.last_login %}
+                            <i class="bi bi-clock-history me-2"></i>{{ license.last_login.strftime('%Y-%m-%d %H:%M') }}
+                        {% else %}
+                            <span class="text-muted">Never logged in</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-0">
+                    <label class="form-label fw-bold text-muted small">LAST IP ADDRESS</label>
+                    <div class="p-3 bg-light rounded">
+                        {% if license.ip_address %}
+                            <code class="text-info">{{ license.ip_address }}</code>
+                        {% else %}
+                            <span class="text-muted">No IP recorded</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Actions -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>Management Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% if license.is_suspended %}
+                <div class="col-md-6">
+                    <form method="POST" action="{{ url_for('admin_unsuspend_license', license_id=license.id) }}" class="h-100">
+                        <button type="submit" class="btn btn-success btn-lg w-100 h-100">
+                            <i class="bi bi-play-circle-fill"></i><br>
+                            <strong>Unsuspend License</strong><br>
+                            <small>Restore access</small>
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-warning btn-lg w-100 h-100" data-bs-toggle="modal" data-bs-target="#suspendModal">
+                        <i class="bi bi-pause-circle-fill"></i><br>
+                        <strong>Suspend License</strong><br>
+                        <small>Block access temporarily</small>
+                    </button>
+                </div>
+                {% endif %}
+
+                {% if license.hwid %}
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-info btn-lg w-100 h-100" data-bs-toggle="modal" data-bs-target="#resetHwidModal">
+                        <i class="bi bi-arrow-clockwise"></i><br>
+                        <strong>Reset HWID</strong><br>
+                        <small>Allow rebinding to new machine</small>
+                    </button>
+                </div>
+                {% endif %}
+
+                {% if license.expires_at %}
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-primary btn-lg w-100 h-100" data-bs-toggle="modal" data-bs-target="#extendModal">
+                        <i class="bi bi-calendar-plus-fill"></i><br>
+                        <strong>Extend License</strong><br>
+                        <small>Add more days</small>
+                    </button>
+                </div>
+                {% endif %}
+
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-danger btn-lg w-100 h-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash-fill"></i><br>
+                        <strong>Delete License</strong><br>
+                        <small class="text-white-50">Permanent removal</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login History -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Login History</h5>
+        </div>
+        <div class="card-body">
+            {% if login_history %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>IP Address</th>
+                                <th>HWID</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in login_history %}
+                            <tr>
+                                <td>
+                                    <i class="bi bi-clock me-1"></i>
+                                    {{ entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                </td>
+                                <td>
+                                    <code class="small">{{ entry.ip_address }}</code>
+                                </td>
+                                <td>
+                                    <code class="small text-muted">{{ entry.hwid[:16] }}...</code>
+                                </td>
+                                <td>
+                                    {% if entry.success %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Success
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-x-circle"></i> Failed
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if entry.failure_reason %}
+                                        <small class="text-danger">{{ entry.failure_reason }}</small>
+                                    {% else %}
+                                        <small class="text-success">Login successful</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Total login attempts: {{ login_history|length }}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-clock-history display-1 text-muted"></i>
+                    <h4 class="mt-3">No Login History</h4>
+                    <p class="text-muted">This license has never been used</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Suspend Modal -->
+<div class="modal fade" id="suspendModal" tabindex="-1" aria-labelledby="suspendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="suspendModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Suspend License
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_suspend_license', license_id=license.id) }}">
+                <div class="modal-body">
+                    <p>You are about to suspend license for <strong>{{ license.username }}</strong>.</p>
+                    <div class="mb-3">
+                        <label for="suspendReason" class="form-label">Reason for suspension:</label>
+                        <textarea class="form-control" id="suspendReason" name="reason" rows="3" required placeholder="e.g., Payment overdue, Terms violation, etc."></textarea>
+                    </div>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-info-circle me-2"></i>The user will not be able to log in until you unsuspend this license.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-pause-circle-fill me-2"></i>Suspend License
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset HWID Modal -->
+<div class="modal fade" id="resetHwidModal" tabindex="-1" aria-labelledby="resetHwidModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="resetHwidModalLabel">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Reset HWID Binding
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_reset_hwid', license_id=license.id) }}">
+                <div class="modal-body">
+                    <p>You are about to reset HWID binding for <strong>{{ license.username }}</strong>.</p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Current HWID:</strong><br>
+                        <code>{{ license.hwid if license.hwid else 'Not bound' }}</code>
+                    </div>
+                    <p>This will allow the user to bind their license to a new machine. Use this when:</p>
+                    <ul>
+                        <li>User upgraded their hardware</li>
+                        <li>User got a new computer</li>
+                        <li>HWID was incorrectly bound</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset HWID
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Extend Modal -->
+<div class="modal fade" id="extendModal" tabindex="-1" aria-labelledby="extendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="extendModalLabel">
+                    <i class="bi bi-calendar-plus-fill me-2"></i>Extend License
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_extend_license', license_id=license.id) }}">
+                <div class="modal-body">
+                    <p>Extend license for <strong>{{ license.username }}</strong>.</p>
+                    {% if license.expires_at %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-calendar-x me-2"></i>
+                        <strong>Current Expiration:</strong> {{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}<br>
+                        <small class="text-muted">{{ license.days_remaining() }} days remaining</small>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="extendDays" class="form-label">Add days:</label>
+                        <select class="form-select" id="extendDays" name="days" required>
+                            <option value="7">7 Days (1 Week)</option>
+                            <option value="14">14 Days (2 Weeks)</option>
+                            <option value="30" selected>30 Days (1 Month)</option>
+                            <option value="60">60 Days (2 Months)</option>
+                            <option value="90">90 Days (3 Months)</option>
+                            <option value="180">180 Days (6 Months)</option>
+                            <option value="365">365 Days (1 Year)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus-fill me-2"></i>Extend License
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete License
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_delete_license', license_id=license.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                    <p>You are about to permanently delete the license for <strong>{{ license.username }}</strong> (ID: #{{ license.id }}).</p>
+                    <p>This will:</p>
+                    <ul>
+                        <li>Remove the license key from the database</li>
+                        <li>Delete all login history for this license</li>
+                        <li>Prevent any future logins with this key</li>
+                    </ul>
+                    <p class="mb-0"><strong>Are you absolutely sure?</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash-fill me-2"></i>Yes, Delete License
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

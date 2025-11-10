@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - License Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+            <p class="text-muted">Overview of your license management system</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card stat-card border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1">Total Licenses</p>
+                            <h2 class="mb-0">{{ total_licenses }}</h2>
+                            <small class="text-muted">All time</small>
+                        </div>
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-key-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1">Active Licenses</p>
+                            <h2 class="mb-0 text-success">{{ active_licenses }}</h2>
+                            <small class="text-muted">Currently active</small>
+                        </div>
+                        <div class="stat-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1">Suspended</p>
+                            <h2 class="mb-0 text-warning">{{ suspended_licenses }}</h2>
+                            <small class="text-muted">Security suspensions</small>
+                        </div>
+                        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-shield-exclamation"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1">Expired</p>
+                            <h2 class="mb-0 text-danger">{{ expired_licenses }}</h2>
+                            <small class="text-muted">Need renewal</small>
+                        </div>
+                        <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Recent Activity</h5>
+                            <small class="text-muted">Last 24 hours</small>
+                        </div>
+                    </div>
+                    <h2 class="text-info mb-0">{{ recent_logins }}</h2>
+                    <p class="text-muted mb-0">Login attempts</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-clock-history me-2"></i>Recently Created Licenses
+                    </h5>
+                    {% if recent_licenses %}
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="text-muted">
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Status</th>
+                                        <th>Expires</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for license in recent_licenses %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ license.username }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if license.is_suspended %}
+                                                <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> Suspended</span>
+                                            {% elif license.is_expired() %}
+                                                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Active</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if license.expires_at %}
+                                                {{ license.expires_at.strftime('%Y-%m-%d') }}
+                                                <br><small class="text-muted">({{ license.days_remaining() }} days)</small>
+                                            {% else %}
+                                                <span class="badge bg-primary">Permanent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ license.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No licenses created yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">
+                        <i class="bi bi-lightning-fill me-2"></i>Quick Actions
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('admin_create_license') }}" class="btn btn-primary btn-custom w-100 py-3">
+                                <i class="bi bi-plus-circle-fill me-2"></i>
+                                Create New License
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('admin_licenses') }}" class="btn btn-outline-primary btn-custom w-100 py-3">
+                                <i class="bi bi-list-ul me-2"></i>
+                                View All Licenses
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="/api/admin/stats" target="_blank" class="btn btn-outline-secondary btn-custom w-100 py-3">
+                                <i class="bi bi-bar-chart-fill me-2"></i>
+                                API Statistics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

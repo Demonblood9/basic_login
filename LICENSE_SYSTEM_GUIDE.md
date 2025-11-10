@@ -20,8 +20,13 @@ A complete license management platform with **HWID binding**, **auto-suspension*
 - **Cross-Platform** - Works on Windows, Linux, and macOS
 - **User-Friendly** - Clean interface with status indicators
 
-### 🚧 Admin Panel (In Progress - `qt_admin/`)
-The admin panel foundation is created. To complete it, you'll need Qt Creator or can use the backend API directly via curl/Postman.
+### ✅ Web-Based Admin Panel (`backend/templates/`)
+- **Modern Bootstrap 5 Interface** - Professional responsive design
+- **Dashboard** - Statistics overview with license metrics
+- **License Management** - Create, view, suspend, delete licenses
+- **Login History** - Complete audit trail for each license
+- **HWID Management** - Reset hardware bindings when needed
+- **Quick Actions** - Extend licenses, manage suspensions
 
 ---
 
@@ -53,7 +58,23 @@ python license_server.py
 
 Server runs on `http://localhost:5000`
 
-### 3. Create Your First License
+### 3. Access the Web Admin Panel
+
+Open your web browser and navigate to:
+```
+http://localhost:5000/admin/dashboard
+```
+
+You can now:
+- View license statistics
+- Create new licenses with expiration dates
+- View login history and HWID information
+- Suspend/unsuspend licenses
+- Reset HWID bindings
+- Extend license durations
+- Delete licenses
+
+**Or create licenses via API:**
 
 **Using curl:**
 ```bash
@@ -274,23 +295,67 @@ View with: `GET /api/admin/licenses/{id}`
 
 ---
 
-## 🛠️ Building the Admin Panel (Complete It Yourself)
+## 🌐 Web-Based Admin Panel
 
-The admin panel starter is in `qt_admin/`. To complete it:
+The complete admin panel is accessible via your web browser!
 
-### Option 1: Use Qt Creator (Easiest)
-1. Install Qt Creator
-2. Open `qt_admin/CMakeLists.txt`
-3. Create UI with Qt Designer
-4. Implement these features:
-   - License table (QTableWidget)
-   - Create license dialog
-   - License details dialog with history
-   - Suspend/Delete/Extend buttons
-   - Statistics dashboard
+### Accessing the Admin Panel
 
-### Option 2: Use Backend API Directly
-You can manage everything via HTTP requests:
+1. Start the license server:
+```bash
+cd backend
+python license_server.py
+```
+
+2. Open your browser and navigate to:
+```
+http://localhost:5000/admin/dashboard
+```
+
+### Admin Panel Features
+
+#### Dashboard (`/admin/dashboard`)
+- **Statistics Cards**: Total, Active, Suspended, and Expired licenses
+- **Recent Activity**: Login count in the last 24 hours
+- **Recent Licenses Table**: Quick overview of newest licenses
+- **Quick Actions**: Create new license, view all licenses
+
+#### All Licenses (`/admin/licenses`)
+- **Complete License List**: View all licenses in a sortable table
+- **Status Badges**: Visual indicators (Active, Suspended, Expired, Inactive)
+- **HWID Information**: See which machines are bound
+- **IP Tracking**: Last known IP address for each license
+- **Expiration Info**: Days remaining or "Permanent" status
+- **Quick View**: Click to see detailed information
+
+#### Create License (`/admin/licenses/create`)
+- **Username Entry**: Assign a unique identifier
+- **Duration Selection**: Choose from preset durations or custom days
+  - 7 days (1 week)
+  - 30 days (1 month)
+  - 90 days (3 months)
+  - 365 days (1 year)
+  - Permanent (never expires)
+  - Custom (any number of days)
+- **Security Notice**: Reminder that keys are shown only once
+
+#### License Details (`/admin/licenses/<id>`)
+- **Full License Information**: Username, status, HWID, IP, dates
+- **Management Actions**:
+  - Suspend/Unsuspend with reason tracking
+  - Reset HWID (allow rebinding to new machine)
+  - Extend license duration
+  - Delete license permanently
+- **Complete Login History**: Every login attempt with:
+  - Timestamp
+  - IP address
+  - HWID used
+  - Success/failure status
+  - Failure reasons
+
+### Using the API Directly (Optional)
+
+You can also manage everything via HTTP requests:
 
 ```bash
 # List all licenses
@@ -306,20 +371,8 @@ curl -X POST http://localhost:5000/api/admin/licenses/1/suspend \
   -H "Content-Type: application/json" \
   -d '{"reason": "Payment overdue"}'
 
-# View login history
+# View license details and login history
 curl http://localhost:5000/api/admin/licenses/1
-```
-
-### Option 3: Web-Based Admin Panel
-Create a simple Flask web UI:
-
-```python
-from flask import render_template
-
-@app.route('/admin/dashboard')
-def admin_dashboard():
-    licenses = LicenseKey.query.all()
-    return render_template('dashboard.html', licenses=licenses)
 ```
 
 ---
@@ -429,17 +482,21 @@ curl http://localhost:5000/api/admin/licenses/1
 ```
 basic_login/
 ├── backend/
-│   ├── license_server.py       ← NEW: Professional license server
+│   ├── license_server.py       ← Professional license server with web admin
+│   ├── templates/               ← Web admin panel templates
+│   │   ├── base.html            ← Base template with navigation
+│   │   ├── dashboard.html       ← Admin dashboard with statistics
+│   │   ├── licenses.html        ← List all licenses
+│   │   ├── license_details.html ← Detailed license view
+│   │   ├── license_created.html ← Show newly created license
+│   │   └── create_license.html  ← Create license form
 │   ├── oauth_app.py             ← OAuth 2.0 server
 │   └── app.py                   ← Original simple key auth
 │
-├── qt_client/                   ← NEW: Modern Qt client
+├── qt_client/                   ← Modern Qt client (cross-platform)
 │   ├── main.cpp
 │   ├── mainwindow.h/cpp/ui
 │   └── CMakeLists.txt
-│
-├── qt_admin/                    ← NEW: Admin panel (starter)
-│   └── main.cpp
 │
 └── client/                      ← Old Win32 client (deprecated)
     └── main.cpp
@@ -486,13 +543,14 @@ basic_login/
 
 ## 🎯 Next Steps
 
-1. **Complete Admin Panel** - Use Qt Creator to build full UI
+1. **Add Authentication to Admin Panel** - Protect admin routes with login
 2. **Add Payment Integration** - Stripe, PayPal, etc.
-3. **Email Notifications** - Expiration reminders
-4. **Web Dashboard** - Browser-based admin interface
-5. **License Analytics** - Usage statistics, charts
-6. **Multi-Tier Licenses** - Basic, Pro, Enterprise
-7. **Feature Flags** - Different features per license tier
+3. **Email Notifications** - Expiration reminders and alerts
+4. **License Analytics** - Usage charts and graphs in dashboard
+5. **Multi-Tier Licenses** - Basic, Pro, Enterprise tiers
+6. **Feature Flags** - Different features per license tier
+7. **Two-Factor Authentication** - Enhanced security for clients
+8. **Automated License Renewal** - Recurring subscriptions
 
 ---
 
