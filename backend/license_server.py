@@ -113,6 +113,16 @@ def get_client_ip():
         return request.headers.get('X-Forwarded-For').split(',')[0]
     return request.remote_addr
 
+# Custom Jinja2 filter for date formatting
+@app.template_filter('format_datetime')
+def format_datetime(value):
+    """Format datetime as 'December 12 2025 - 09:00 (EST)'"""
+    if value is None:
+        return 'Never'
+    if isinstance(value, str):
+        return value  # Already formatted
+    return value.strftime('%B %d %Y - %H:%M (EST)')
+
 # Authentication Decorator
 def login_required(f):
     """Decorator to require admin login for routes"""
@@ -534,11 +544,16 @@ def validate_license():
 
     record_login(license_key, True)
 
+    # Format expiration date as "December 12 2025 - 09:00 (EST)"
+    expires_formatted = 'Never'
+    if license_key.expires_at:
+        expires_formatted = license_key.expires_at.strftime('%B %d %Y - %H:%M (EST)')
+
     return jsonify({
         'success': True,
         'message': 'Authentication successful',
         'username': license_key.username,
-        'expires_at': license_key.expires_at.isoformat() if license_key.expires_at else 'Never',
+        'expires_at': expires_formatted,
         'days_remaining': license_key.days_remaining(),
         'is_permanent': license_key.expires_at is None
     }), 200

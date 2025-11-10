@@ -136,14 +136,14 @@
                                         </td>
                                         <td>
                                             {% if license.expires_at %}
-                                                {{ license.expires_at.strftime('%Y-%m-%d') }}
+                                                {{ license.expires_at|format_datetime }}
                                                 <br><small class="text-muted">({{ license.days_remaining() }} days)</small>
                                             {% else %}
                                                 <span class="badge bg-primary">Permanent</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <small class="text-muted">{{ license.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                            <small class="text-muted">{{ license.created_at|format_datetime }}</small>
                                         </td>
                                     </tr>
                                     {% endfor %}

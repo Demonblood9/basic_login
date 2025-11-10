@@ -32,7 +32,7 @@
         <i class="bi bi-clock-history me-3" style="font-size: 2rem;"></i>
         <div>
             <h5 class="alert-heading mb-1">License Expired</h5>
-            <p class="mb-0">This license expired on {{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p class="mb-0">This license expired on {{ license.expires_at|format_datetime }}</p>
         </div>
     </div>
     {% endif %}
@@ -99,14 +99,14 @@
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold text-muted small">CREATED</label>
                     <div class="p-3 bg-light rounded">
-                        <i class="bi bi-calendar-plus me-2"></i>{{ license.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        <i class="bi bi-calendar-plus me-2"></i>{{ license.created_at|format_datetime }}
                     </div>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold text-muted small">EXPIRES</label>
                     <div class="p-3 bg-light rounded">
                         {% if license.expires_at %}
-                            <i class="bi bi-calendar-x me-2"></i>{{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                            <i class="bi bi-calendar-x me-2"></i>{{ license.expires_at|format_datetime }}
                             <br><small class="text-muted">{{ license.days_remaining() }} days remaining</small>
                         {% else %}
                             <i class="bi bi-infinity me-2"></i><strong class="text-primary">Permanent</strong>
@@ -117,7 +117,7 @@
                     <label class="form-label fw-bold text-muted small">LAST LOGIN</label>
                     <div class="p-3 bg-light rounded">
                         {% if license.last_login %}
-                            <i class="bi bi-clock-history me-2"></i>{{ license.last_login.strftime('%Y-%m-%d %H:%M') }}
+                            <i class="bi bi-clock-history me-2"></i>{{ license.last_login|format_datetime }}
                         {% else %}
                             <span class="text-muted">Never logged in</span>
                         {% endif %}
@@ -221,7 +221,7 @@
                             <tr>
                                 <td>
                                     <i class="bi bi-clock me-1"></i>
-                                    {{ entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {{ entry.timestamp|format_datetime }}
                                 </td>
                                 <td>
                                     <code class="small">{{ entry.ip_address }}</code>
@@ -351,7 +351,7 @@
                     {% if license.expires_at %}
                     <div class="alert alert-info">
                         <i class="bi bi-calendar-x me-2"></i>
-                        <strong>Current Expiration:</strong> {{ license.expires_at.strftime('%Y-%m-%d %H:%M') }}<br>
+                        <strong>Current Expiration:</strong> {{ license.expires_at|format_datetime }}<br>
                         <small class="text-muted">{{ license.days_remaining() }} days remaining</small>
                     </div>
                     {% endif %}
