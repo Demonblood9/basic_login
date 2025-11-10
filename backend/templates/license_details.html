@@ -167,7 +167,7 @@
             <div class="row g-3">
                 {% if license.is_suspended %}
                 <div class="col-md-6">
-                    <form method="POST" action="{{ url_for('admin_unsuspend_license', license_id=license.id) }}" class="h-100">
+                    <form method="POST" action="{{ url_for('admin_unsuspend_license', token=license.id|serialize_id) }}" class="h-100">
                         <button type="submit" class="btn btn-success btn-lg w-100 h-100">
                             <i class="bi bi-play-circle-fill"></i><br>
                             <strong>Unsuspend License</strong><br>
@@ -295,7 +295,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_suspend_license', license_id=license.id) }}">
+            <form method="POST" action="{{ url_for('admin_suspend_license', token=license.id|serialize_id) }}">
                 <div class="modal-body">
                     <p>You are about to suspend license for <strong>{{ license.username }}</strong>.</p>
                     <div class="mb-3">
@@ -327,7 +327,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_reset_hwid', license_id=license.id) }}">
+            <form method="POST" action="{{ url_for('admin_reset_hwid', token=license.id|serialize_id) }}">
                 <div class="modal-body">
                     <p>You are about to reset HWID binding for <strong>{{ license.username }}</strong>.</p>
                     <div class="alert alert-info">
@@ -363,7 +363,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_extend_license', license_id=license.id) }}">
+            <form method="POST" action="{{ url_for('admin_extend_license', token=license.id|serialize_id) }}">
                 <div class="modal-body">
                     <p>Extend license for <strong>{{ license.username }}</strong>.</p>
                     {% if license.expires_at %}
@@ -407,13 +407,13 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_delete_license', license_id=license.id) }}">
+            <form method="POST" action="{{ url_for('admin_delete_license', token=license.id|serialize_id) }}">
                 <div class="modal-body">
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
                         <strong>Warning:</strong> This action cannot be undone!
                     </div>
-                    <p>You are about to permanently delete the license for <strong>{{ license.username }}</strong> (ID: #{{ license.id }}).</p>
+                    <p>You are about to permanently delete the license for <strong>{{ license.username }}</strong>.</p>
                     <p>This will:</p>
                     <ul>
                         <li>Remove the license key from the database</li>

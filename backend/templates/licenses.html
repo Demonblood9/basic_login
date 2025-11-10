@@ -93,7 +93,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('admin_license_details', license_id=license.id) }}"
+                                    <a href="{{ url_for('admin_license_details', token=license.id|serialize_id) }}"
                                        class="btn btn-sm btn-outline-primary btn-custom">
                                         <i class="bi bi-eye"></i> View
                                     </a>

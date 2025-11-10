@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import secrets
 import hashlib
 import os
@@ -21,6 +22,22 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
+
+# URL Serialization for sensitive IDs
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+def serialize_license_id(license_id):
+    """Serialize a license ID to a secure token"""
+    return serializer.dumps(license_id, salt='license-id')
+
+def deserialize_license_id(token):
+    """Deserialize a token back to a license ID"""
+    try:
+        # max_age=None means the token never expires (we're using it for obfuscation, not time-limited access)
+        license_id = serializer.loads(token, salt='license-id', max_age=None)
+        return license_id
+    except (BadSignature, SignatureExpired):
+        return None
 
 # Database Models
 class LicenseKey(db.Model):
@@ -145,6 +162,11 @@ def format_datetime(value):
     if isinstance(value, str):
         return value  # Already formatted
     return value.strftime('%B %d %Y - %H:%M (EST)')
+
+@app.template_filter('serialize_id')
+def serialize_id_filter(license_id):
+    """Serialize a license ID to a secure token for use in templates"""
+    return serialize_license_id(license_id)
 
 # Authentication Decorator
 def login_required(f):
@@ -288,10 +310,15 @@ def admin_create_license():
 
     return render_template('create_license.html')
 
-@app.route('/admin/licenses/<int:license_id>')
+@app.route('/admin/licenses/<token>')
 @login_required
-def admin_license_details(license_id):
+def admin_license_details(token):
     """View license details and history"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
     history = LoginHistory.query.filter_by(license_id=license_id)\
         .order_by(LoginHistory.timestamp.desc())\
@@ -300,10 +327,15 @@ def admin_license_details(license_id):
 
     return render_template('license_details.html', license=license_key, login_history=history)
 
-@app.route('/admin/licenses/<int:license_id>/suspend', methods=['POST'])
+@app.route('/admin/licenses/<token>/suspend', methods=['POST'])
 @login_required
-def admin_suspend_license(license_id):
+def admin_suspend_license(token):
     """Suspend a license"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
     reason = request.form.get('reason', 'Suspended by administrator')
 
@@ -312,12 +344,17 @@ def admin_suspend_license(license_id):
     db.session.commit()
 
     flash(f'License for {license_key.username} has been suspended', 'warning')
-    return redirect(url_for('admin_license_details', license_id=license_id))
+    return redirect(url_for('admin_license_details', token=token))
 
-@app.route('/admin/licenses/<int:license_id>/unsuspend', methods=['POST'])
+@app.route('/admin/licenses/<token>/unsuspend', methods=['POST'])
 @login_required
-def admin_unsuspend_license(license_id):
+def admin_unsuspend_license(token):
     """Unsuspend a license"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
 
     license_key.is_suspended = False
@@ -325,12 +362,17 @@ def admin_unsuspend_license(license_id):
     db.session.commit()
 
     flash(f'License for {license_key.username} has been unsuspended', 'success')
-    return redirect(url_for('admin_license_details', license_id=license_id))
+    return redirect(url_for('admin_license_details', token=token))
 
-@app.route('/admin/licenses/<int:license_id>/reset-hwid', methods=['POST'])
+@app.route('/admin/licenses/<token>/reset-hwid', methods=['POST'])
 @login_required
-def admin_reset_hwid(license_id):
+def admin_reset_hwid(token):
     """Reset HWID binding"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
 
     old_hwid = license_key.hwid
@@ -340,12 +382,17 @@ def admin_reset_hwid(license_id):
     db.session.commit()
 
     flash(f'HWID reset for {license_key.username}. User can now bind to a new machine.', 'info')
-    return redirect(url_for('admin_license_details', license_id=license_id))
+    return redirect(url_for('admin_license_details', token=token))
 
-@app.route('/admin/licenses/<int:license_id>/extend', methods=['POST'])
+@app.route('/admin/licenses/<token>/extend', methods=['POST'])
 @login_required
-def admin_extend_license(license_id):
+def admin_extend_license(token):
     """Extend license expiration"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
     days = int(request.form.get('days', 30))
 
@@ -360,12 +407,17 @@ def admin_extend_license(license_id):
     db.session.commit()
 
     flash(f'License extended by {days} days', 'success')
-    return redirect(url_for('admin_license_details', license_id=license_id))
+    return redirect(url_for('admin_license_details', token=token))
 
-@app.route('/admin/licenses/<int:license_id>/delete', methods=['POST'])
+@app.route('/admin/licenses/<token>/delete', methods=['POST'])
 @login_required
-def admin_delete_license(license_id):
+def admin_delete_license(token):
     """Delete a license"""
+    license_id = deserialize_license_id(token)
+    if license_id is None:
+        flash('Invalid or expired license link.', 'danger')
+        return redirect(url_for('admin_licenses'))
+
     license_key = LicenseKey.query.get_or_404(license_id)
     username = license_key.username
 
