@@ -311,8 +311,14 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
     reply->deleteLater();
 
     if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "Update check failed:" << reply->errorString();
-        return; // Silently fail - don't interrupt user experience
+        QString debugMessage = QString("VERSION DEBUG INFO\n\n"
+                                      "Client Version: %1\n"
+                                      "Server Connection: FAILED\n"
+                                      "Error: %2")
+                                  .arg(currentVersion)
+                                  .arg(reply->errorString());
+        QMessageBox::information(this, "Version Check Debug", debugMessage);
+        return;
     }
 
     QByteArray response = reply->readAll();
@@ -320,25 +326,38 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
     QJsonObject obj = doc.object();
 
     bool updateAvailable = obj["update_available"].toBool();
-
-    if (!updateAvailable) {
-        qDebug() << "No updates available";
-        return;
-    }
-
     QString serverVersion = obj["version"].toString();
+    QString message = obj["message"].toString();
     qint64 fileSize = obj["file_size"].toInteger();
     QString releaseNotes = obj["release_notes"].toString();
     QString downloadUrl = obj["download_url"].toString();
 
-    // Compare versions (simple string comparison for now)
+    // Always show debug info
+    QString debugMessage = QString("VERSION DEBUG INFO\n\n"
+                                  "Client Version: %1\n"
+                                  "Server Version: %2\n"
+                                  "Update Available: %3\n"
+                                  "Versions Match: %4\n"
+                                  "Message: %5")
+                              .arg(currentVersion)
+                              .arg(serverVersion.isEmpty() ? "N/A (not set on server)" : serverVersion)
+                              .arg(updateAvailable ? "YES" : "NO")
+                              .arg(serverVersion == currentVersion ? "YES" : "NO")
+                              .arg(message.isEmpty() ? "None" : message);
+
+    QMessageBox::information(this, "Version Check Debug", debugMessage);
+
+    // Only proceed with update if there's actually a version mismatch
+    if (!updateAvailable || serverVersion.isEmpty()) {
+        return;
+    }
+
     if (serverVersion == currentVersion) {
-        qDebug() << "Already on latest version:" << currentVersion;
         return;
     }
 
     // Show mandatory update dialog
-    QString message = QString("A mandatory update is required!\n\n"
+    QString updateMessage = QString("A mandatory update is required!\n\n"
                              "Current version: %1\n"
                              "New version: %2\n"
                              "Size: %3 MB\n\n")
@@ -347,13 +366,13 @@ void MainWindow::handleUpdateCheckReply(QNetworkReply *reply)
                         .arg(fileSize / 1024.0 / 1024.0, 0, 'f', 2);
 
     if (!releaseNotes.isEmpty()) {
-        message += "Release Notes:\n" + releaseNotes + "\n\n";
+        updateMessage += "Release Notes:\n" + releaseNotes + "\n\n";
     }
 
-    message += "The application will now download and install the update.\n"
+    updateMessage += "The application will now download and install the update.\n"
                "This is required to continue using the application.";
 
-    QMessageBox::information(this, "Mandatory Update", message);
+    QMessageBox::information(this, "Mandatory Update", updateMessage);
 
     // Force download - no choice
     downloadUpdate(downloadUrl, serverVersion);
