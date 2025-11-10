@@ -7,6 +7,7 @@
 #include <QSysInfo>
 #include <QNetworkInterface>
 #include <QStorageInfo>
+#include <QTimer>
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
